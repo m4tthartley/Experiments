@@ -1,0 +1,16 @@
+
+@header: Parsing test
+
+This @italic=will be awesome
+
+This is a normal paragraph.
+
+Have you figured out @italic: how awesome this will be?
+
+How about @italic{this stuff}!
+
+@code{
+	int main() {
+		printf("Hello World");
+	}
+}
