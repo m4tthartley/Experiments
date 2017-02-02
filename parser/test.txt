@@ -9,6 +9,8 @@ Have you figured out @italic: how awesome this will be?
 
 How about @italic{this stuff}!
 
+This @italic{@bold{will be bold italic}}.
+
 @code{
 	int main() {
 		printf("Hello World");

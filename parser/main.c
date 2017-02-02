@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 
 enum {
 	TOKEN_UNKNOWN,
@@ -114,23 +115,10 @@ typedef struct {
 ContentBlock blocks[256];
 int block_count = 0;
 
-int main() {
-	printf("test\n");
+char *file_str;
 
-	FILE *f = fopen("test.txt", "rb");
-	fseek(f, 0, SEEK_END);
-	int size = ftell(f);
-	fseek(f, 0, SEEK_SET);
-
-	char *str = malloc(size+1);
-	fread(str, 1, size, f);
-	str[size] = 0;
-	fclose(f);
-
-	printf("size %i\n", size);
-	// printf("%s\n", str);
-
-	parse_ptr = str;
+void first_test() {
+	parse_ptr = file_str;
 	Token t;
 	t = get_token();
 	ContentBlock *b = NULL;
@@ -186,4 +174,136 @@ int main() {
 		}
 		// printf("%i %s\n", t.type, t.str);
 	}
+}
+
+typedef struct {} ParserState;
+typedef struct {
+	enum {
+		NODE_START,
+		NODE_END,
+		TEXT,
+	} type;
+	char str[256];
+	int len;
+} Segment;
+bool parser_get_segment(ParserState *ps, Segment *seg) {
+	Token t;
+	t = get_token();
+
+	seg->len = 0;
+
+	if (t.type == TOKEN_EOF) /*break;*/ return false;
+
+	while (t.type != TOKEN_NODE && t.type != TOKEN_EOF) {
+		// if (!b || strcmp(b->node, "paragraph")!=0) {
+		// 	b = &blocks[block_count++];
+		// 	strcpy(b->node, "paragraph");
+		// }
+		// printf("%s", t.str);
+
+		/*todo: check if last node was equals, if it was and END flag isn't set, return text.
+				If it was and END flag is set, return the node end.*/
+
+		seg->type = TEXT;
+		strcpy(seg->str+seg->len, t.str);
+		seg->len += strlen(t.str);
+		return true;
+
+		// t = get_token();
+	}
+	// need to have saved the beginning of the string and set the end to 0
+	// should return the ptr in token so it can set to 0
+
+	if (t.type == TOKEN_NODE) {
+		t = get_token();
+		// if (t.type == TOKEN_COLON) {
+		// 	printf("_");
+		// 	t = get_token();
+		// 	while (t.type != TOKEN_NEWLINE && t.type != TOKEN_EOF) {
+		// 		printf("%s", t.str);
+		// 		t = get_token();
+		// 	}
+		// 	printf("_");
+		// }
+		// if (t.type == TOKEN_EQUALS) {
+		// 	printf("_");
+		// 	t = get_token();
+		// 	while (t.type != TOKEN_SPACE && t.type != TOKEN_NEWLINE && t.type != TOKEN_EOF) {
+		// 		printf("%s", t.str);
+		// 		t = get_token();
+		// 	}
+		// 	printf("_");
+		// }
+		if (t.type == TOKEN_OPEN_CURLY_BRACE) {
+			// printf("_");
+			// t = get_token();
+			// int brace_indent = 0;
+			// while ((t.type != TOKEN_CLOSE_CURLY_BRACE || brace_indent>0) && t.type != TOKEN_EOF) {
+			// 	printf("%s", t.str);
+			// 	if (t.type == TOKEN_OPEN_CURLY_BRACE) ++brace_indent;
+			// 	if (t.type == TOKEN_CLOSE_CURLY_BRACE) --brace_indent;
+			// 	t = get_token();
+			// }
+			// t = get_token();
+			// printf("_");
+
+			seg->type = NODE_START;
+			strcpy(seg->str+seg->len, t.str);
+			seg->len += strlen(t.str);
+		}
+	}
+	/*todo: When end of line or close brace, return the end for the last node started of the correct type*/
+	if (t.type == TOKEN_CLOSE_CURLY_BRACE) {
+		seg->type = NODE_END;
+		strcpy(seg->str+seg->len, t.str);
+		seg->len += strlen(t.str);
+	}
+
+	return true;
+}
+
+void second_test() {
+	// Usage code
+	ParserState ps;
+	parse_ptr = file_str;
+	// parser_init(&ps, "test.txt");
+	Segment seg;
+	while (parser_get_segment(&ps, &seg)) {
+		// parser_segment(&ps, &seg);
+		if (seg.type == NODE_START) {
+			if (strcmp(seg.str, "italic")) {
+				printf("<i>");
+			}
+		}
+		if (seg.type == NODE_END) {
+			if (strcmp(seg.str, "italic")) {
+				printf("</i>");
+			}
+		}
+		if (seg.type == TEXT) {
+			printf(seg.str);
+		}
+	}
+}
+
+int main() {
+	printf("test\n");
+
+	FILE *f = fopen("test.txt", "rb");
+	fseek(f, 0, SEEK_END);
+	int size = ftell(f);
+	fseek(f, 0, SEEK_SET);
+
+	file_str = malloc(size+1);
+	fread(file_str, 1, size, f);
+	file_str[size] = 0;
+	fclose(f);
+
+	printf("size %i\n", size);
+	// printf("%s\n", str);
+
+
+	// first_test();
+
+	second_test();
 }
