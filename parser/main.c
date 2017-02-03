@@ -186,6 +186,26 @@ typedef struct {
 	char str[256];
 	int len;
 } Segment;
+typedef struct {
+	char name[16];
+	enum {
+		NODE_EQUALS,
+		NODE_COLON,
+		NODE_BRACES,
+	} type;
+	bool end;
+} Node;
+Node node_stack[16];
+int node_count = 0;
+void remove_node_from_stack(ParserState *ps, int index) {
+	if (index == node_count-1) {
+		--node_count;
+		return;
+	}
+	for (int i = index+1; i < node_count; ++i) {
+		node_stack[i-1] = node_stack[i];
+	}
+}
 bool parser_get_segment(ParserState *ps, Segment *seg) {
 	Token t;
 	t = get_token();
@@ -203,6 +223,25 @@ bool parser_get_segment(ParserState *ps, Segment *seg) {
 
 		/*todo: check if last node was equals, if it was and END flag isn't set, return text.
 				If it was and END flag is set, return the node end.*/
+		if (node_count > 0 && node_stack[node_count-1].type == NODE_EQUALS) {
+			if (node_stack[node_count-1].end) {
+				seg->type = NODE_END;
+				strcpy(seg->str+seg->len, t.str);
+				seg->len += strlen(t.str);
+				remove_node_from_stack(ps, node_count-1);
+				return true;
+			} else {
+				node_stack[node_count-1].end = true;
+			}
+		}
+
+		if (t.type == TOKEN_NEWLINE) {
+			for (int i = node_count-1; i >= 0; --i) {
+				if (node_stack[i].type == NODE_COLON) {
+					remove_node_from_stack(ps, i);
+				}
+			}
+		}
 
 		seg->type = TEXT;
 		strcpy(seg->str+seg->len, t.str);
@@ -215,6 +254,7 @@ bool parser_get_segment(ParserState *ps, Segment *seg) {
 	// should return the ptr in token so it can set to 0
 
 	if (t.type == TOKEN_NODE) {
+		strcpy(node_stack[node_count].name, t.str);
 		t = get_token();
 		// if (t.type == TOKEN_COLON) {
 		// 	printf("_");
@@ -234,7 +274,31 @@ bool parser_get_segment(ParserState *ps, Segment *seg) {
 		// 	}
 		// 	printf("_");
 		// }
+		if (t.type == TOKEN_COLON) {
+			node_stack[node_count].type = NODE_COLON;
+			node_stack[node_count].end = false;
+			++node_count;
+
+			seg->type = NODE_START;
+			strcpy(seg->str+seg->len, t.str);
+			seg->len += strlen(t.str);
+			return true;
+		}
+		if (t.type == TOKEN_EQUALS) {
+			node_stack[node_count].type = NODE_EQUALS;
+			node_stack[node_count].end = false;
+			++node_count;
+
+			seg->type = NODE_START;
+			strcpy(seg->str+seg->len, t.str);
+			seg->len += strlen(t.str);
+			return true;
+		}
 		if (t.type == TOKEN_OPEN_CURLY_BRACE) {
+			node_stack[node_count].type = NODE_BRACES;
+			node_stack[node_count].end = false;
+			++node_count;
+
 			// printf("_");
 			// t = get_token();
 			// int brace_indent = 0;
@@ -250,13 +314,21 @@ bool parser_get_segment(ParserState *ps, Segment *seg) {
 			seg->type = NODE_START;
 			strcpy(seg->str+seg->len, t.str);
 			seg->len += strlen(t.str);
+			return true;
 		}
 	}
 	/*todo: When end of line or close brace, return the end for the last node started of the correct type*/
 	if (t.type == TOKEN_CLOSE_CURLY_BRACE) {
+		for (int i = node_count-1; i >= 0; --i) {
+			if (node_stack[i].type == NODE_BRACES) {
+				remove_node_from_stack(ps, i);
+				break;
+			}
+		}
 		seg->type = NODE_END;
 		strcpy(seg->str+seg->len, t.str);
 		seg->len += strlen(t.str);
+		return true;
 	}
 
 	return true;
@@ -273,11 +345,15 @@ void second_test() {
 		if (seg.type == NODE_START) {
 			if (strcmp(seg.str, "italic")) {
 				printf("<i>");
+			} else {
+				printf("<unknown>");
 			}
 		}
 		if (seg.type == NODE_END) {
 			if (strcmp(seg.str, "italic")) {
 				printf("</i>");
+			} else {
+				printf("</unknown>");
 			}
 		}
 		if (seg.type == TEXT) {
