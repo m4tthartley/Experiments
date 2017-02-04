@@ -1,2 +1,2 @@
 
-fasm main.s game.com
+fasm main.asm game.com

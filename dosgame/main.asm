@@ -10,17 +10,19 @@ print_int:
 
 	; push word 10
 
-	mov ax, test_number
+	mov ax, [test_number]
 	mov bl, 0
 
 print_count_loop:
+	mov dx, 0
 	div [ten]
 	add bl, 1
 	cmp ax, 0
 	jne print_count_loop
 
+	mov ch, 0
 	mov cl, bl
-	mov ax, test_number
+	mov ax, [test_number]
 print_loop:
 	mov dx, 0
 	div [ten]
@@ -31,10 +33,22 @@ print_loop:
 	mov ah, 2
 	; mov dl, 
 	add dl, 48 ; Add position of '0' in ascii
-	int 0x21
+	mov si, int_string_buffer
+	add si, cx
+	sub si, 1
+	mov [si], dl
+	; int 0x21
 	pop ax
 
-	; loop print_loop
+	loop print_loop
+
+	mov si, int_string_buffer
+	mov bh, 0
+	add si, bx
+	mov [si], byte '$'
+	mov dx, int_string_buffer
+	mov ah, 9
+	int 0x21
 
 	; add sp, 2
 	pop bp
@@ -159,9 +173,9 @@ skip_move:
 	ret
 
 
-msg db "Hello DOS!","$"
-msg2 db "How are you doing?","$"
-msg3 db "SUP DUDE","$"
+msg db "Hello DOS!",10,"$"
+msg2 db "How are you doing?",10,"$"
+msg3 db "SUP DUDE",10,"$"
 key_left_code db 'K'
 key_right_code db 'M'
 key_top_code db 'H'
@@ -171,5 +185,6 @@ key_right db 0
 key_top db 0
 key_bottom db 0
 player_x dw 200
-test_number dw 2374
+test_number dw 47921
 ten dw 10
+int_string_buffer db 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0
