@@ -3,7 +3,7 @@
 
 This @italic=will be awesome
 
-This is a normal paragraph.
+This is a {normal} paragraph.
 
 Have you figured out @italic: how awesome this will be?
 
@@ -16,3 +16,11 @@ This @italic{@bold{will be bold italic}}.
 		printf("Hello World");
 	}
 }
+
+This parser is @bold=@italic{getting pretty} cool!
+
+I like @italic{big butts and I @bold:cannot lie!}
+
+
+
+sdjnfkajw rkiaje fvikejf vjkenfvejknkvj
