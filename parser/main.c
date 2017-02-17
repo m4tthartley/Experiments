@@ -188,6 +188,8 @@ typedef struct {
 		NODE_START,
 		NODE_END,
 		TEXT,
+		PARA_START,
+		PARA_END,
 	} type;
 	char str[256];
 	int len;
@@ -205,6 +207,7 @@ typedef struct {
 Node node_stack[16];
 int node_count = 0;
 int brace_indent = 0;
+bool paragraph_open = false;
 void remove_node_from_stack(ParserState *ps, int index) {
 	printf("removing node %s\n", node_stack[index].name);
 	if (index == node_count-1) {
@@ -216,8 +219,10 @@ void remove_node_from_stack(ParserState *ps, int index) {
 	}
 	--node_count;
 }
+Token t;
+Token last_token;
 bool parser_get_segment(ParserState *ps, Segment *seg) {
-	Token t;
+	last_token = t;
 	t = get_token();
 
 	seg->len = 0;
@@ -235,6 +240,14 @@ bool parser_get_segment(ParserState *ps, Segment *seg) {
 				remove_node_from_stack(ps, i);
 				return true;
 			}
+		}
+
+		if (paragraph_open) {
+			seg->type = PARA_END;
+			seg->len = 0;
+			revert_token();
+			paragraph_open = false;
+			return true;
 		}
 
 		return false;
@@ -291,8 +304,29 @@ bool parser_get_segment(ParserState *ps, Segment *seg) {
 					return true;
 				}
 			}
+
+			if (paragraph_open) {
+				seg->type = PARA_END;
+				seg->len = 0;
+				revert_token();
+				paragraph_open = false;
+				return true;
+			}
+
+			seg->type = TEXT;
+			seg->str[0] = '\n';
+			seg->str[1] = 0;
+			seg->len = 1;
+			return true;
 		}
 
+		if (last_token.type == TOKEN_NEWLINE && node_count < 1) {
+			seg->type = PARA_START;
+			seg->len = 0;
+			revert_token();
+			paragraph_open = true;
+			return true;
+		}
 		seg->type = TEXT;
 		strcpy(seg->str+seg->len, t.str);
 		seg->len += strlen(t.str);
@@ -398,11 +432,18 @@ void second_test() {
 		{"header", "<h1>", "</h1>"},
 		{"italic", "<i>", "</i>"},
 		{"bold", "<b>", "</b>"},
-		{"code", "<code>", "</code>"},
+		{"code", "<pre>", "</pre>"},
+		{"video", "<iframe src=\"", "\"></iframe>"},
 	};
 	Segment seg;
 	while (parser_get_segment(&ps, &seg)) {
 		// parser_segment(&ps, &seg);
+		if (seg.type == PARA_START) {
+			fprintf(fileout, "<p>");
+		}
+		if (seg.type == PARA_END) {
+			fprintf(fileout, "</p>");
+		}
 		if (seg.type == NODE_START) {
 			bool found = false;
 			for (int i = 0; i < (sizeof(nodes)/sizeof(char*)/3); ++i) {
