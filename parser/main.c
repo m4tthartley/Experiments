@@ -491,6 +491,167 @@ void second_test() {
 	fclose(fileout);
 }
 
+typedef struct {
+	enum {
+		NODE_START,
+		NODE_END,
+		TEXT,
+		PARA_START,
+		PARA_END,
+	} type;
+	char *str;
+	int len;
+} HighToken;
+char buf[1024*100];
+int buf_size = 0;
+void add_token(HighToken *out, int out_limit, int *token_count, int type, char *token_str) {
+	if (*token_count < out_limit) {
+		out[*token_count].type = type;
+		out[*token_count].len = strlen(token_str);
+		strcpy(buf+buf_size, token_str);
+		*(buf+buf_size+out[*token_count].len) = 0;
+		out[*token_count].str = buf+buf_size;
+		buf_size += out[*token_count].len+1;
+	}
+	++*token_count;
+}
+void inner_parse(HighToken *out, int out_limit, int *token_count, int end_type) {
+	while (1) {
+		if (t.type == TOKEN_EOF) break;
+		if (end_type == TOKEN_CLOSE_CURLY_BRACE) {
+			printf("END TYPE CURLY %i %i %s\n", TOKEN_CLOSE_CURLY_BRACE, t.type, t.str);
+			if (t.type == TOKEN_CLOSE_CURLY_BRACE) {
+				printf("GOT CURLY\n");
+				break;
+			}
+		}
+		
+
+		while (t.type != TOKEN_NODE && t.type != TOKEN_EOF) {
+			// if (!b || strcmp(b->node, "paragraph")!=0) {
+			// 	b = &blocks[block_count++];
+			// 	// b->node = "paragraph";
+			// 	strcpy(b->node, "paragraph");
+			// }
+			// printf("%s", t.str);
+			add_token(out, out_limit, token_count, TEXT, t.str);
+			t = get_token();
+		}
+		// need to have saved the beginning of the string and set the end to 0
+		// should return the ptr in token so it can set to 0
+
+		if (t.type == TOKEN_NODE) {
+			char node_name[32];
+			strcpy(node_name, t.str+1);
+			add_token(out, out_limit, token_count, NODE_START, t.str+1);
+			t = get_token();
+			if (t.type == TOKEN_COLON) {
+				// printf("_");
+				t = get_token();
+				while (t.type != TOKEN_NEWLINE && t.type != TOKEN_EOF) {
+					// printf("%s", t.str);
+					add_token(out, out_limit, token_count, TEXT, t.str);
+					t = get_token();
+				}
+				// printf("_");
+				add_token(out, out_limit, token_count, NODE_END, node_name);
+			}
+			if (t.type == TOKEN_EQUALS) {
+				// printf("_");
+				t = get_token();
+				while (t.type != TOKEN_SPACE && t.type != TOKEN_NEWLINE && t.type != TOKEN_EOF) {
+					// printf("%s", t.str);
+					add_token(out, out_limit, token_count, TEXT, t.str);
+					t = get_token();
+				}
+				// printf("_");
+				add_token(out, out_limit, token_count, NODE_END, node_name);
+			}
+			if (t.type == TOKEN_OPEN_CURLY_BRACE) {
+				// printf("_");
+				t = get_token();
+				int brace_indent = 0;
+				// while ((t.type != TOKEN_CLOSE_CURLY_BRACE || brace_indent>0) && t.type != TOKEN_EOF) {
+				// 	// printf("%s", t.str);
+				// 	add_token(out, out_limit, token_count, TEXT, t.str);
+				// 	if (t.type == TOKEN_OPEN_CURLY_BRACE) ++brace_indent;
+				// 	if (t.type == TOKEN_CLOSE_CURLY_BRACE) --brace_indent;
+				// 	t = get_token();
+				// }
+				inner_parse(out, out_limit, token_count, TOKEN_CLOSE_CURLY_BRACE);
+				add_token(out, out_limit, token_count, NODE_END, node_name);
+				// printf("CLOSE CURLY, %s\n", t.str);
+				t = get_token();
+				// printf("CLOSE CURLY, %s\n", t.str);
+				// printf("_");
+			}
+		}
+		// printf("%i %s\n", t.type, t.str);
+	}
+}
+int parse_string(char *input, HighToken *out, int out_limit) {
+	parse_ptr = input;
+	// ContentBlock *b = NULL;
+	int token_count = 0;
+// #define add_token(token_type, token_str)\
+// 	if (token_count < out_limit) {\
+// 		out[token_count].type = token_type;\
+// 		out[token_count].len = strlen(token_str);\
+// 		strcpy(buf+buf_size, token_str);\
+// 		*(buf+buf_size+out[token_count].len) = 0;\
+// 		out[token_count].str = buf+buf_size;\
+// 		buf_size += out[token_count].len+1;\
+// 	}\
+// 	++token_count;\
+
+	t = get_token();
+	inner_parse(out, out_limit, &token_count, TOKEN_EOF);
+
+	return token_count;
+}
+
+char *nodes[][3] = {
+	{"header", "<h1>", "</h1>"},
+	{"italic", "<i>", "</i>"},
+	{"bold", "<b>", "</b>"},
+	{"code", "<pre>", "</pre>"},
+	{"video", "<iframe src=\"", "\"></iframe>"},
+};
+int node_output(char *str) {
+	for (int i = 0; i < (sizeof(nodes)/sizeof(char*)/3); ++i) {
+		if (strcmp(str, nodes[i][0])==0) {
+			return i;
+		}
+	}
+	return -1;
+}
+void third_test() {
+	FILE *fileout = fopen("test.html", "w");
+	HighToken tokens[1024];
+	int count = parse_string(file_str, tokens, 1024);
+	printf("%i tokens\n", count);
+	{
+		for (int i = 0; i < count; ++i) {
+			if (tokens[i].type == NODE_START) {
+				int index = node_output(tokens[i].str);
+				if (index != -1) {
+					fprintf(fileout, "%s", nodes[index][1]);
+				}
+			}
+			if (tokens[i].type == NODE_END) {
+				int index = node_output(tokens[i].str);
+				if (index != -1) {
+					fprintf(fileout, "%s", nodes[index][2]);
+				}
+			}
+			if (tokens[i].type == TEXT) {
+				fprintf(fileout, "%s", tokens[i].str);
+			}
+		}
+	}
+	fclose(fileout);
+}
+
 int main() {
 	printf("test\n");
 
@@ -510,5 +671,6 @@ int main() {
 
 	// first_test();
 
-	second_test();
+	// second_test();
+	third_test();
 }
