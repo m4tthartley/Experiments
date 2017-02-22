@@ -8,10 +8,26 @@
 	"buffers":
 	[
 		{
-			"file": "main.s",
+			"file": "main.asm",
 			"settings":
 			{
-				"buffer_size": 1495,
+				"buffer_size": 2234,
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "run.bat",
+			"settings":
+			{
+				"buffer_size": 76,
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "build.bat",
+			"settings":
+			{
+				"buffer_size": 62,
 				"line_ending": "Unix"
 			}
 		},
@@ -19,7 +35,7 @@
 			"file": "build.sh",
 			"settings":
 			{
-				"buffer_size": 22,
+				"buffer_size": 24,
 				"line_ending": "Unix"
 			}
 		}
@@ -91,12 +107,16 @@
 	"build_varint": "",
 	"command_palette":
 	{
-		"height": 52.0,
-		"last_filter": "",
+		"height": 392.0,
+		"last_filter": "package",
 		"selected_items":
 		[
+			[
+				"package",
+				"Package Control: Install Package"
+			]
 		],
-		"width": 392.0
+		"width": 400.0
 	},
 	"console":
 	{
@@ -117,10 +137,11 @@
 	},
 	"expanded_folders":
 	[
-		"/home/matt/Desktop/dosgame"
+		"/W/Miscellaneous/dosgame"
 	],
 	"file_history":
 	[
+		"/C/Users/Matt/AppData/Roaming/Sublime Text 3/Packages/User/NewBuildSystem.sublime-build",
 		"/home/matt/.config/sublime-text-3/Packages/User/C.sublime-build",
 		"/home/matt/work/Cassy/build/build_linux_server.sh",
 		"/home/matt/work/SpaceGame/code/game.cc",
@@ -217,24 +238,25 @@
 			[
 				{
 					"buffer": 0,
-					"file": "main.s",
+					"file": "main.asm",
 					"semi_transient": false,
 					"settings":
 					{
-						"buffer_size": 1495,
+						"buffer_size": 2234,
 						"regions":
 						{
 						},
 						"selection":
 						[
 							[
-								560,
-								560
+								198,
+								198
 							]
 						],
 						"settings":
 						{
-							"syntax": "Packages/R/R.sublime-syntax"
+							"syntax": "Packages/FASM x86/Syntaxes/Assembly x86 Intel.tmLanguage",
+							"translate_tabs_to_spaces": false
 						},
 						"translation.x": 0.0,
 						"translation.y": 0.0,
@@ -245,19 +267,75 @@
 				},
 				{
 					"buffer": 1,
-					"file": "build.sh",
+					"file": "run.bat",
 					"semi_transient": false,
 					"settings":
 					{
-						"buffer_size": 22,
+						"buffer_size": 76,
 						"regions":
 						{
 						},
 						"selection":
 						[
 							[
-								21,
-								21
+								76,
+								76
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Batch File/Batch File.tmLanguage"
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 1,
+					"type": "text"
+				},
+				{
+					"buffer": 2,
+					"file": "build.bat",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 62,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								61,
+								61
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Batch File/Batch File.tmLanguage"
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 2,
+					"type": "text"
+				},
+				{
+					"buffer": 3,
+					"file": "build.sh",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 24,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								24,
+								24
 							]
 						],
 						"settings":
@@ -268,7 +346,7 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 1,
+					"stack_index": 3,
 					"type": "text"
 				}
 			]
@@ -313,7 +391,7 @@
 	{
 		"height": 0.0
 	},
-	"pinned_build_system": "Packages/User/C.sublime-build",
+	"pinned_build_system": "Packages/User/NewBuildSystem.sublime-build",
 	"project": "dosgame.sublime-project",
 	"replace":
 	{
