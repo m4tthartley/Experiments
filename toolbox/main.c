@@ -49,7 +49,7 @@ void bubble_sort(void *array, int len, int stride, bool (*compare)(void*, void*)
 		for (int j = 0; j < len-1; ++j) {
 			char *a = array+(stride*j);
 			char *b = array+(stride*(j+1));
-			if (compare(array+(stride*j), array+(stride*(j+1)))) {
+			if (compare(a, b)) {
 				for (int k = 0; k < stride; ++k) {
 					char swap = *(a+k);
 					*(a+k) = *(b+k);
@@ -61,7 +61,7 @@ void bubble_sort(void *array, int len, int stride, bool (*compare)(void*, void*)
 }
 
 // should key be void* ?
-void *linear_search(int key, void *array, int len, int stride, bool (*compare)(void*, void*)) {
+void *linear_search(int key, void *array, int len, int stride) {
 	char *ptr = array;
 	for (int i = 0; i < len; ++i) {
 		int k = *(int*)ptr;
@@ -72,19 +72,46 @@ void *linear_search(int key, void *array, int len, int stride, bool (*compare)(v
 	return NULL;
 }
 
-/*void *binary_search(int key, void *array, int len, int stride) {
+void *binary_search(int key, void *array, int len, int stride) {
+	int low = 0;
+	int high = len-1;
+	int index = high/2;
+	while (low <= high) { // <= ?
+		int k = *(int*)(array+(stride*index));
+		if (key < k) {
+			high = index-1;
+		} else if (key > k) {
+			low = index+1;
+		} else {
+			// found it
+			return array+(stride*index);
+		}
+		index = low + (high-low)/2;
+	}
 
-}*/
+	return NULL;
+}
 
 int main() {
 	printf("%lu items\n", sizeof(items)/sizeof(Item));
 
-	for (int i = 0; i < array_size(items); ++i) printf("%i %s\n", items[i].key, items[i].str);
-	bubble_sort(items, array_size(items), sizeof(Item), int_compare_proc);
-	for (int i = 0; i < array_size(items); ++i) printf("%i %s\n", items[i].key, items[i].str);
+	FILE *out = fopen("out.txt", "w");
 
-	Item *i = linear_search(57, items, array_size(items), sizeof(Item), int_compare_proc);
+	#define print_items()\
+		fprintf(out, "{\n");\
+		for (int i = 0; i < array_size(items); ++i) {\
+			fprintf(out, "\t%i %s\n", items[i].key, items[i].str);\
+		}\
+		fprintf(out, "}\n");
+
+	print_items();
+	bubble_sort(items, array_size(items), sizeof(Item), int_compare_proc);
+	print_items();
+
+	// Item *i = linear_search(57, items, array_size(items), sizeof(Item));
+	int key = 1;
+	Item *i = binary_search(key, items, array_size(items), sizeof(Item));
 	if (i) {
-		printf("item 57 is '%s'\n", i->str);
+		printf("item %i is '%s'\n", key, i->str);
 	}
 }
