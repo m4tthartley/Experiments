@@ -3,8 +3,28 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
+#include <windows.h>
+
+typedef int64_t int64;
 
 #define array_size(arr) (sizeof(arr)/sizeof(arr[0]))
+
+LARGE_INTEGER _performance_frequency = {0};
+int64 start_time() {
+	LARGE_INTEGER time;
+	QueryPerformanceCounter(&time);
+	return time.QuadPart;
+}
+int64 end_time(int64 start) {
+	LARGE_INTEGER time;
+	QueryPerformanceCounter(&time);
+	if (!_performance_frequency.QuadPart) QueryPerformanceFrequency(&_performance_frequency);
+	int64 result = time.QuadPart - start;
+	result *= 1000000000;
+	result /= _performance_frequency.QuadPart;
+	return result;
+}
 
 typedef struct {
 	int key;
@@ -63,11 +83,17 @@ Item items[] = {
 bool int_compare_proc(void *a, void *b) {
 	int aa = *(int*)a;
 	int bb = *(int*)b;
-	if (bb < aa) {
+	if (bb <= aa) {
 		return true;
 	} else {
 		return false;
 	}
+}
+
+int compare_ints(void *a, void *b) {
+	int aa = *(int*)a;
+	int bb = *(int*)b;
+	return aa - bb;
 }
 
 void bubble_sort(void *array, int len, int stride, bool (*compare)(void*, void*)) {
@@ -147,6 +173,30 @@ void merge_sort (void *array, int len, int stride, bool (*compare)(void*, void*)
 	free(scratch);
 }
 
+void quick_sort (void *array, int len, int stride, int (*compare)(void*, void*)) {
+	char *pivot = (char*)array+((len-1)*stride);
+	int swap_index = 0;
+	for (int i = 0; i < len; ++i) {
+		if (compare((char*)array+(i*stride), pivot) < 1) {
+			for (int k = 0; k < stride; ++k) {
+				char swap = *((char*)array+(i*stride)+k);
+				*((char*)array+(i*stride)+k) = *((char*)array+(swap_index*stride)+k);
+				*((char*)array+(swap_index*stride)+k) = swap;
+			}
+			++swap_index;
+		}
+	}
+
+	// if (swap_index > 0) {
+	// 	quick_sort(array, swap_index, stride, compare);
+	// }
+	// if (len-swap_index > 0) {
+	// 	quick_sort((char*)array+(swap_index*stride), len-swap_index, stride, compare);
+	// }
+}
+
+// todo: In place merge sort, hehe
+
 // should key be void* ?
 void *linear_search(int key, void *array, int len, int stride) {
 	char *ptr = array;
@@ -208,9 +258,13 @@ int main() {
 		fprintf(out, "}\n");
 
 	print_items();
+	int64 t = start_time();
 	// bubble_sort(items, array_size(items), sizeof(Item), int_compare_proc);
 	// selection_sort(items, array_size(items), sizeof(Item), int_compare_proc);
-	merge_sort(items, array_size(items), sizeof(Item), int_compare_proc);
+	// merge_sort(items, array_size(items), sizeof(Item), int_compare_proc);
+	quick_sort(items, array_size(items), sizeof(Item), compare_ints);
+	int64 time = end_time(t);
+	printf("sort time %lins\n", time);
 	print_items();
 
 	// Item *i = linear_search(57, items, array_size(items), sizeof(Item));
@@ -221,4 +275,18 @@ int main() {
 	}
 
 	// system("pause");
+
+	bool fail = false;
+	for (int i = 0; i < array_size(items); ++i) {
+		if (items[i].key != i+1) {
+			fail = true;
+			break;
+		}
+	}
+
+	if (fail) {
+		printf("ITEMS ARE NOT IN ORDER\n");
+	} else {
+		printf("success\n");
+	}
 }

@@ -24,27 +24,27 @@
 	4 Yang Xiao Long
 }
 {
-	1 Ruby Rose
 	2 Weiss Schnee
 	3 Blake Belladonna
+	1 Ruby Rose
 	4 Yang Xiao Long
-	5 Jaune Arc
-	6 Pyrrha Nikos
-	7 Ozpin
-	8 Glynda Goodwitch
-	9 Lie Ren
-	10 Nora Valkyrie
 	11 Sun Wukong
-	12 Cinder Fall
-	13 Roman Torchwick
-	14 Penny Polendina
-	15 Neptune Vasilias
 	16 James Ironwood
-	17 Peter Port
-	18 Bartholomew Oobleck
 	19 Emerald Sustrai
-	20 Mercury Black
-	21 Qrow Branwen
+	7 Ozpin
+	17 Peter Port
+	6 Pyrrha Nikos
+	15 Neptune Vasilias
 	22 Mysterious Narrator
+	9 Lie Ren
+	21 Qrow Branwen
+	8 Glynda Goodwitch
 	23 Taiyang Xiao Long
+	18 Bartholomew Oobleck
+	10 Nora Valkyrie
+	20 Mercury Black
+	13 Roman Torchwick
+	12 Cinder Fall
+	14 Penny Polendina
+	5 Jaune Arc
 }
