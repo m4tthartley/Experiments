@@ -80,6 +80,9 @@ Item items[] = {
 	4,	"Yang Xiao Long",
 };
 
+void *dyn_array_init();
+void *dyn_array_push();
+
 // bool int_compare_proc(void *a, void *b) {
 // 	int aa = *(int*)a;
 // 	int bb = *(int*)b;
