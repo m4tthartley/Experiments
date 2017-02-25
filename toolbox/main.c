@@ -80,8 +80,70 @@ Item items[] = {
 	4,	"Yang Xiao Long",
 };
 
-void *dyn_array_init();
-void *dyn_array_push();
+#define assert(exp) {if (!exp) *((int*)0) = 0;}
+
+/*	----------------------------------------------------------------
+	Dynamic arrays
+*/
+#define DYN_ARRAY_CHUNK_SIZE 64
+
+typedef struct {
+	int len;
+	int max;
+	int stride;
+} DynArrayHead;
+
+#define dyn_array_add(array, num) (array + _dyn_array_add(&(array), sizeof(array[0]), num))
+#define dyn_array_push(array, item) {\
+	*dyn_array_add(array, 1) = item;\
+}
+#define dyn_array_len(array) (((DynArrayHead*)array-1)->len)
+
+// todo: increase malloc size for big len, and realloc when needed
+// 0000 0000
+int _dyn_array_add(void **ptr, int stride, int len) {
+	if (len > 0) {
+		if (!*ptr) {
+			// int asd = len & (DYN_ARRAY_CHUNK_SIZE-1);
+			// if (asd > 0) asd = DYN_ARRAY_CHUNK_SIZE-asd;
+			// int len2 = len + asd;
+			int len2 = (len+64) & ~(DYN_ARRAY_CHUNK_SIZE-1);
+			*ptr = (char*)malloc(sizeof(DynArrayHead)+(len2*stride)) + sizeof(DynArrayHead);
+			DynArrayHead *head = (DynArrayHead*)*ptr - 1;
+			head->len = 0;
+			head->max = len2;
+			head->stride = stride;
+		}
+
+		DynArrayHead *head = (DynArrayHead*)*ptr - 1;
+		head->len += len;
+		if (head->len > head->max) {
+			int len2 = (head->len+64) & ~(DYN_ARRAY_CHUNK_SIZE-1);
+			void *tmp = realloc(head, sizeof(DynArrayHead)+(len2*stride));
+			printf("realloc %i\n", len2);
+			if (!tmp) {
+				// free(head);
+				assert(false);
+			}
+			head = tmp;
+			head->max = len2;
+			*ptr = head+1;
+		}
+		return head->len-len;
+	} else {
+		assert(false);
+		return 0;
+	}
+}
+
+// todo: dyn_array_remove_and_shift();
+
+// void *_dyn_array_push(void **ptr, void *item, int stride) {
+// 	if (!*ptr) {
+// 		*ptr = malloc(sizeof(DynArrayHead)+(DYN_ARRAY_CHUNK_SIZE*stride));
+// 	}
+// 	return NULL;
+// }
 
 // bool int_compare_proc(void *a, void *b) {
 // 	int aa = *(int*)a;
@@ -93,6 +155,9 @@ void *dyn_array_push();
 // 	}
 // }
 
+/*	----------------------------------------------------------------
+	Sorting
+*/
 int compare_ints(void *a, void *b) {
 	int aa = *(int*)a;
 	int bb = *(int*)b;
@@ -200,6 +265,9 @@ void quick_sort (void *array, int len, int stride, int (*compare)(void*, void*))
 
 // todo: In place merge sort, hehe
 
+/*	----------------------------------------------------------------
+	Searching
+*/
 // should key be void* ?
 void *linear_search(int key, void *array, int len, int stride) {
 	char *ptr = array;
@@ -325,5 +393,35 @@ int main() {
 		printf("ITEMS ARE NOT IN ORDER\n");
 	} else {
 		printf("success\n");
+	}
+
+	int *numbers = NULL;
+	// dyn_array_push(numbers, 53);
+	int *tmp = dyn_array_add(numbers, 3);
+	tmp[0] = 53;
+	tmp[1] = 7;
+	tmp[2] = 92;
+	dyn_array_push(numbers, 33);
+	int len = dyn_array_len(numbers);
+	for (int i = 0; i < len; ++i) fprintf(out, "%i: %i\n", i, numbers[i]);
+
+	typedef struct {
+		int i;
+		char *s;
+	} Thing;
+	Thing *things = NULL;
+	Thing tmp_thing = {12, "TESTIG 12312312"};
+	dyn_array_push(things, tmp_thing);
+	Thing tmp2 = {53, "Hello World!"};
+	dyn_array_push(things, tmp2);
+	for (int i = 0; i < dyn_array_len(things); ++i) fprintf(out, "%i: %s\n", things[i].i, things[i].s);
+
+	// Thing *stuff = dyn_array_add(stuff, 1000);
+	Thing *stuff = NULL;
+	int *stuff2 = NULL;
+	// dyn_array_add(stuff, 1000);
+	for (int i = 0; i < 1000; ++i) {
+		// Thing a = {rand(), "test"};
+		dyn_array_push(stuff2, rand());
 	}
 }
