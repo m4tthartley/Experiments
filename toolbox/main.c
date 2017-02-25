@@ -80,15 +80,15 @@ Item items[] = {
 	4,	"Yang Xiao Long",
 };
 
-bool int_compare_proc(void *a, void *b) {
-	int aa = *(int*)a;
-	int bb = *(int*)b;
-	if (bb <= aa) {
-		return true;
-	} else {
-		return false;
-	}
-}
+// bool int_compare_proc(void *a, void *b) {
+// 	int aa = *(int*)a;
+// 	int bb = *(int*)b;
+// 	if (bb <= aa) {
+// 		return true;
+// 	} else {
+// 		return false;
+// 	}
+// }
 
 int compare_ints(void *a, void *b) {
 	int aa = *(int*)a;
@@ -96,14 +96,14 @@ int compare_ints(void *a, void *b) {
 	return aa - bb;
 }
 
-void bubble_sort(void *array, int len, int stride, bool (*compare)(void*, void*)) {
+void bubble_sort(void *array, int len, int stride, int (*compare)(void*, void*)) {
 	char *arr = array;
 	for (int i = 0; i < len-1; ++i) {
 		bool repeat = false;
 		for (int j = 0; j < len-1; ++j) {
 			char *a = arr+(stride*j);
 			char *b = arr+(stride*(j+1));
-			if (compare(a, b)) {
+			if (compare(a, b)>0) {
 				repeat = true;
 				for (int k = 0; k < stride; ++k) {
 					char swap = *(a+k);
@@ -121,13 +121,13 @@ void bubble_sort(void *array, int len, int stride, bool (*compare)(void*, void*)
 	you insert in the correct place and shift
 	the rest of the array up to make room.
 */
-void selection_sort(void *array, int len, int stride, bool (*compare)(void*, void*)) {
+void selection_sort(void *array, int len, int stride, int (*compare)(void*, void*)) {
 	char *arr = array;
 	for (int i = 0; i < len-1; ++i) {
 		char *min = arr+(i*stride);
 		for (int j = i+1; j < len; ++j) {
 			char *b = arr+(j*stride);
-			if (compare(min, b)) {
+			if (compare(min, b)>0) {
 				for (int k = 0; k < stride; ++k) {
 					char swap = *(min+k);
 					*(min+k) = *(b+k);
@@ -144,7 +144,7 @@ void selection_sort(void *array, int len, int stride, bool (*compare)(void*, voi
 	{for (int ii = 0; ii < stride; ++ii)\
 		*(dest+ii) = *(src+ii);}
 
-void inner_merge_sort(char *array, int len, int stride, bool (*compare)(void*, void*), char *scratch) {
+void inner_merge_sort(char *array, int len, int stride, int (*compare)(void*, void*), char *scratch) {
 	int l = len/2;
 	if (l > 0) {
 		inner_merge_sort(array, l, stride, compare, scratch);
@@ -155,7 +155,7 @@ void inner_merge_sort(char *array, int len, int stride, bool (*compare)(void*, v
 		int ai = 0;
 		int bi = 0;
 		for (int k = 0; k < len; ++k) {
-			if (ai < l && (bi >= len-l || compare(b+(bi*stride), a+(ai*stride)))) {
+			if (ai < l && (bi >= len-l || compare(a+(ai*stride), b+(bi*stride))<1)) {
 				copy_sort_item(array+(k*stride), a+(ai*stride));
 				++ai;
 			} else {
@@ -166,7 +166,7 @@ void inner_merge_sort(char *array, int len, int stride, bool (*compare)(void*, v
 		memcpy(scratch, array, len*stride);
 	}
 }
-void merge_sort (void *array, int len, int stride, bool (*compare)(void*, void*)) {
+void merge_sort (void *array, int len, int stride, int (*compare)(void*, void*)) {
 	void *scratch = malloc(len*stride);
 	memcpy(scratch, array, len*stride);
 	inner_merge_sort(array, len, stride, compare, scratch);
@@ -187,12 +187,12 @@ void quick_sort (void *array, int len, int stride, int (*compare)(void*, void*))
 		}
 	}
 
-	// if (swap_index > 0) {
-	// 	quick_sort(array, swap_index, stride, compare);
-	// }
-	// if (len-swap_index > 0) {
-	// 	quick_sort((char*)array+(swap_index*stride), len-swap_index, stride, compare);
-	// }
+	if (swap_index > 0) {
+		quick_sort(array, swap_index-1, stride, compare);
+	}
+	if (len-swap_index > 0) {
+		quick_sort((char*)array+((swap_index-1)*stride), len-(swap_index-1), stride, compare);
+	}
 }
 
 // todo: In place merge sort, hehe
@@ -267,6 +267,41 @@ int main() {
 	printf("sort time %lins\n", time);
 	print_items();
 
+	{
+		#define print_nums()\
+			fprintf(out, "{\n");\
+			for (int i = 0; i < array_size(nums); ++i) {\
+				fprintf(out, "\t%i\n", nums[i]);\
+			}\
+			fprintf(out, "}\n");
+		int nums[1000];
+		for (int i = 0; i < array_size(nums); ++i) {
+			nums[i] = rand();
+		}
+
+		print_nums();
+		int64 start = start_time();
+		quick_sort(nums, array_size(nums), sizeof(nums[0]), compare_ints);
+		int64 end = end_time(start);
+		printf("nums sort time %i\n", end);
+		print_nums();
+
+		bool fail = false;
+		int last = nums[0];
+		for (int i = 1; i < array_size(nums); ++i) {
+			if (nums[i] < last) {
+				fail = true;
+				break;
+			}
+			last = nums[i];
+		}
+		if (fail) {
+			printf("ITEMS ARE NOT IN ORDER\n");
+		} else {
+			printf("nums success\n");
+		}
+	}
+
 	// Item *i = linear_search(57, items, array_size(items), sizeof(Item));
 	int key = 1;
 	Item *i = binary_search(key, items, array_size(items), sizeof(Item));
@@ -283,7 +318,6 @@ int main() {
 			break;
 		}
 	}
-
 	if (fail) {
 		printf("ITEMS ARE NOT IN ORDER\n");
 	} else {
