@@ -265,8 +265,10 @@ void quick_sort (void *array, int len, int stride, int (*compare)(void*, void*))
 
 // todo: In place merge sort, hehe
 
-/*	----------------------------------------------------------------
+/*
+	================================================================
 	Searching
+	================================================================
 */
 // should key be void* ?
 void *linear_search(int key, void *array, int len, int stride) {
@@ -285,14 +287,13 @@ void *binary_search(int key, void *array, int len, int stride) {
 	int low = 0;
 	int high = len-1;
 	int index = high/2;
-	while (low <= high) { // <= ?
+	while (low <= high) {
 		int k = *(int*)(arr+(stride*index));
 		if (key < k) {
 			high = index-1;
 		} else if (key > k) {
 			low = index+1;
 		} else {
-			// found it
 			return arr+(stride*index);
 		}
 		index = low + (high-low)/2;
@@ -302,6 +303,35 @@ void *binary_search(int key, void *array, int len, int stride) {
 }
 
 // todo: Interpolated binary search
+
+/*
+	================================================================
+	Strings
+	================================================================
+*/
+typedef struct {
+	// note: in chunks
+	int offset;
+	int size;
+} StringDir;
+typedef struct {
+	void *mem;
+	int mem_size;
+	StringDir *dir;
+	int dir_size;
+} StringPool;
+char *make_string(StringPool *strp, char *str) {
+	return str;
+}
+
+void str_append(StringPool *strp, char *str, char *str2) {
+
+}
+
+/*
+	make_dyn_string()
+	dyn_string_append
+*/
 
 int main() {
 #if 0
@@ -316,6 +346,19 @@ int main() {
 		used[r] = true;
 	}
 #endif
+
+	{
+		StringPool strp = {0};
+		strp.mem_size = 1024;
+		strp.mem = malloc(strp.mem_size);
+		strp.dir = malloc((strp.mem_size/64)*sizeof(StringDir));
+		strp.dir_size = strp.mem_size/64;
+
+		char *my_str = make_string(&strp, "Hello");
+		str_append(&strp, my_str, " World");
+		str_append(&strp, my_str, "!\n");
+		printf("%s", my_str);
+	}
 
 	printf("%lu items\n", sizeof(items)/sizeof(Item));
 

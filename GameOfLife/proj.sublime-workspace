@@ -39,7 +39,23 @@
 			"file": "main.c",
 			"settings":
 			{
-				"buffer_size": 17,
+				"buffer_size": 2456,
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "build.bat",
+			"settings":
+			{
+				"buffer_size": 131,
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "/W/SoftwareRenderer/win32.c",
+			"settings":
+			{
+				"buffer_size": 23629,
 				"line_ending": "Unix"
 			}
 		}
@@ -287,15 +303,15 @@
 					"semi_transient": false,
 					"settings":
 					{
-						"buffer_size": 17,
+						"buffer_size": 2456,
 						"regions":
 						{
 						},
 						"selection":
 						[
 							[
-								15,
-								15
+								1600,
+								1600
 							]
 						],
 						"settings":
@@ -303,10 +319,67 @@
 							"syntax": "Packages/C++/C++.tmLanguage"
 						},
 						"translation.x": 0.0,
-						"translation.y": 0.0,
+						"translation.y": 288.0,
 						"zoom_level": 1.0
 					},
 					"stack_index": 0,
+					"type": "text"
+				},
+				{
+					"buffer": 1,
+					"file": "build.bat",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 131,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								131,
+								131
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Batch File/Batch File.tmLanguage"
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 1,
+					"type": "text"
+				},
+				{
+					"buffer": 2,
+					"file": "/W/SoftwareRenderer/win32.c",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 23629,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								2099,
+								2099
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/C++/C++.tmLanguage",
+							"translate_tabs_to_spaces": false
+						},
+						"translation.x": 0.0,
+						"translation.y": 1312.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 2,
 					"type": "text"
 				}
 			]

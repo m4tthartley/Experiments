@@ -182,15 +182,18 @@ void first_test() {
 	}
 }
 
-typedef struct {} ParserState;
 typedef struct {
-	enum {
-		NODE_START,
-		NODE_END,
-		TEXT,
-		PARA_START,
-		PARA_END,
-	} type;
+	char *parse_cursor;
+} ParserState;
+typedef enum {
+	NODE_START,
+	NODE_END,
+	TEXT,
+	PARA_START,
+	PARA_END,
+} Type;
+typedef struct {
+	Type type;
 	char str[256];
 	int len;
 } Segment;
@@ -492,13 +495,16 @@ void second_test() {
 }
 
 typedef struct {
-	enum {
-		NODE_START,
-		NODE_END,
-		TEXT,
-		PARA_START,
-		PARA_END,
-	} type;
+	// enum {
+	// 	// NODE_START,
+	// 	HIGH_START_NODE,
+	// 	// NODE_END,
+	// 	HIGH_END_NODE,
+	// 	TOKEN_TEXT,
+	// 	PARA_START,
+	// 	PARA_END,
+	// }
+	Type type;
 	char *str;
 	int len;
 } HighToken;
@@ -527,7 +533,7 @@ void inner_parse(HighToken *out, int out_limit, int *token_count, int end_type) 
 		}
 		
 
-		while (t.type != TOKEN_NODE && t.type != TOKEN_EOF) {
+		while (/*t.type != TOKEN_NODE*/ (t.type == TOKEN_TEXT || t.type == TOKEN_SPACE) && t.type != TOKEN_EOF) {
 			// if (!b || strcmp(b->node, "paragraph")!=0) {
 			// 	b = &blocks[block_count++];
 			// 	// b->node = "paragraph";
@@ -585,6 +591,20 @@ void inner_parse(HighToken *out, int out_limit, int *token_count, int end_type) 
 				// printf("CLOSE CURLY, %s\n", t.str);
 				// printf("_");
 			}
+		} else if (t.type == TOKEN_CLOSE_CURLY_BRACE) {
+			if (end_type == TOKEN_CLOSE_CURLY_BRACE) {
+				printf("END TYPE CURLY %i %i %s\n", TOKEN_CLOSE_CURLY_BRACE, t.type, t.str);
+				// if (t.type == TOKEN_CLOSE_CURLY_BRACE) {
+					printf("GOT CURLY\n");
+					break;
+				// }
+			} else {
+				add_token(out, out_limit, token_count, TEXT, t.str);
+				t = get_token();
+			}
+		} else {
+			add_token(out, out_limit, token_count, TEXT, t.str);
+			t = get_token();
 		}
 		// printf("%i %s\n", t.type, t.str);
 	}
