@@ -1,15 +1,35 @@
 
+#ifdef _WIN32
+#	define WINDOWS
+#endif
+#ifdef __APPLE__
+#	define MACOS
+#endif
+#ifdef __linux__
+#	define LINUX
+#endif
+#ifdef __unix__
+#	define UNIX
+#endif
+
 #include <stdio.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
-#include <windows.h>
+#ifdef WINDOWS
+#	include <windows.h>
+#endif
+#ifdef MACOS
+#	include <mach/clock.h>
+#	include <mach/mach.h>
+#endif
 
 typedef int64_t int64;
 
 #define array_size(arr) (sizeof(arr)/sizeof(arr[0]))
 
+#ifdef WINDOWS
 LARGE_INTEGER _performance_frequency = {0};
 int64 start_time() {
 	LARGE_INTEGER time;
@@ -25,6 +45,26 @@ int64 end_time(int64 start) {
 	result /= _performance_frequency.QuadPart;
 	return result;
 }
+#endif
+#ifdef MACOS
+int64 mac_get_nanoseconds() {
+	clock_serv_t clock_service;
+	mach_timespec_t time;
+	host_get_clock_service(mach_host_self(), CALENDAR_CLOCK, &clock_service);
+	clock_get_time(clock_service, &time);
+	mach_port_deallocate(mach_task_self(), clock_service);
+	// todo: seems like this is allocating and deallocating everytime, bad?
+
+	return time.tv_nsec;
+}
+int64 start_time() {
+	return mac_get_nanoseconds();
+}
+int64 end_time(int64 start) {
+	int64 time = mac_get_nanoseconds() - start;
+	return time;
+}
+#endif
 
 typedef struct {
 	int key;
@@ -80,7 +120,8 @@ Item items[] = {
 	4,	"Yang Xiao Long",
 };
 
-#define assert(exp) {if (!exp) *((int*)0) = 0;}
+// note: had to change this to be weird so gcc didn't complain
+#define assert(exp) {if (!exp) {volatile int *p = (int*)0; *p = 0;}}
 
 /*	----------------------------------------------------------------
 	Dynamic arrays
@@ -93,7 +134,7 @@ typedef struct {
 	int stride;
 } DynArrayHead;
 
-#define dyn_array_add(array, num) (array + _dyn_array_add(&(array), sizeof(array[0]), num))
+#define dyn_array_add(array, num) ((_dyn_array_add(&(array), sizeof(array[0]), num)) + array)
 #define dyn_array_push(array, item) {\
 	*dyn_array_add(array, 1) = item;\
 }
@@ -102,6 +143,7 @@ typedef struct {
 // todo: increase malloc size for big len, and realloc when needed
 // 0000 0000
 int _dyn_array_add(void **ptr, int stride, int len) {
+	// printf("*ptr %p\n", *ptr);
 	if (len > 0) {
 		if (!*ptr) {
 			// int asd = len & (DYN_ARRAY_CHUNK_SIZE-1);
@@ -129,6 +171,8 @@ int _dyn_array_add(void **ptr, int stride, int len) {
 			head->max = len2;
 			*ptr = head+1;
 		}
+		// printf("*ptr %p\n", *ptr);
+		// printf("array_add return %i\n", head->len-len);
 		return head->len-len;
 	} else {
 		assert(false);
@@ -378,7 +422,7 @@ int main() {
 	// merge_sort(items, array_size(items), sizeof(Item), int_compare_proc);
 	quick_sort(items, array_size(items), sizeof(Item), compare_ints);
 	int64 time = end_time(t);
-	printf("sort time %lins\n", time);
+	printf("sort time %llins\n", time);
 	print_items();
 
 	{
@@ -397,7 +441,7 @@ int main() {
 		int64 start = start_time();
 		quick_sort(nums, array_size(nums), sizeof(nums[0]), compare_ints);
 		int64 end = end_time(start);
-		printf("nums sort time %i\n", end);
+		printf("nums sort time %lli\n", end);
 		print_nums();
 
 		bool fail = false;
@@ -440,7 +484,7 @@ int main() {
 
 	int *numbers = NULL;
 	// dyn_array_push(numbers, 53);
-	int *tmp = dyn_array_add(numbers, 3);
+	volatile int *tmp = dyn_array_add(numbers, 3);
 	tmp[0] = 53;
 	tmp[1] = 7;
 	tmp[2] = 92;
