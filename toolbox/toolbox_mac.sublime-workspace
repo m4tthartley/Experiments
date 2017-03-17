@@ -39,15 +39,39 @@
 			"file": "main.c",
 			"settings":
 			{
-				"buffer_size": 62,
+				"buffer_size": 12035,
 				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "out.txt",
+			"settings":
+			{
+				"buffer_size": 14208,
+				"line_ending": "Windows"
 			}
 		},
 		{
 			"file": "build.sh",
 			"settings":
 			{
-				"buffer_size": 34,
+				"buffer_size": 61,
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "build.bat",
+			"settings":
+			{
+				"buffer_size": 64,
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "/C/Users/Matt/AppData/Roaming/Sublime Text 3/Packages/User/NewBuildSystem.sublime-build",
+			"settings":
+			{
+				"buffer_size": 77,
 				"line_ending": "Unix"
 			}
 		}
@@ -141,10 +165,11 @@
 	},
 	"expanded_folders":
 	[
-		"/Users/Matt/Desktop/Miscellaneous/toolbox"
+		"/W/Miscellaneous/toolbox"
 	],
 	"file_history":
 	[
+		"/C/Users/Matt/AppData/Roaming/Sublime Text 3/Packages/User/SpaceGame.sublime-build",
 		"/Users/Matt/Library/Application Support/Sublime Text 3/Packages/User/Preferences.sublime-settings",
 		"/Users/Matt/Desktop/Miscellaneous/parser/test.html",
 		"/Users/Matt/Desktop/Miscellaneous/parser/asd.txt",
@@ -294,23 +319,24 @@
 					"semi_transient": false,
 					"settings":
 					{
-						"buffer_size": 62,
+						"buffer_size": 12035,
 						"regions":
 						{
 						},
 						"selection":
 						[
 							[
-								60,
-								60
+								2908,
+								2908
 							]
 						],
 						"settings":
 						{
-							"syntax": "Packages/C++/C++.tmLanguage"
+							"syntax": "Packages/C++/C++.tmLanguage",
+							"translate_tabs_to_spaces": false
 						},
 						"translation.x": 0.0,
-						"translation.y": 0.0,
+						"translation.y": 1875.0,
 						"zoom_level": 1.0
 					},
 					"stack_index": 0,
@@ -318,19 +344,48 @@
 				},
 				{
 					"buffer": 1,
-					"file": "build.sh",
+					"file": "out.txt",
 					"semi_transient": false,
 					"settings":
 					{
-						"buffer_size": 34,
+						"buffer_size": 14208,
 						"regions":
 						{
 						},
 						"selection":
 						[
 							[
-								8,
-								8
+								8083,
+								8083
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Text/Plain text.tmLanguage",
+							"translate_tabs_to_spaces": false
+						},
+						"translation.x": 0.0,
+						"translation.y": 32512.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 1,
+					"type": "text"
+				},
+				{
+					"buffer": 2,
+					"file": "build.sh",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 61,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								26,
+								26
 							]
 						],
 						"settings":
@@ -341,7 +396,63 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 1,
+					"stack_index": 3,
+					"type": "text"
+				},
+				{
+					"buffer": 3,
+					"file": "build.bat",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 64,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								64,
+								64
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Batch File/Batch File.tmLanguage"
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 2,
+					"type": "text"
+				},
+				{
+					"buffer": 4,
+					"file": "/C/Users/Matt/AppData/Roaming/Sublime Text 3/Packages/User/NewBuildSystem.sublime-build",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 77,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								0,
+								0
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/JavaScript/JSON.tmLanguage"
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 4,
 					"type": "text"
 				}
 			]
@@ -380,13 +491,13 @@
 	"menu_visible": true,
 	"output.exec":
 	{
-		"height": 154.0
+		"height": 177.0
 	},
 	"output.find_results":
 	{
 		"height": 0.0
 	},
-	"pinned_build_system": "Packages/User/C.sublime-build",
+	"pinned_build_system": "Packages/User/NewBuildSystem.sublime-build",
 	"project": "toolbox_mac.sublime-project",
 	"replace":
 	{
