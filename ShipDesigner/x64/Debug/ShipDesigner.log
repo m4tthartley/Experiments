@@ -1,0 +1,7 @@
+﻿  ship_designer.c
+c:\users\matt\documents\visual studio 2015\projects\shipdesigner\graphics.c(30): warning C4005: 'GL_EXTENSIONS': macro redefinition
+  c:\program files (x86)\windows kits\8.1\include\um\gl\gl.h(897): note: see previous definition of 'GL_EXTENSIONS'
+c:\users\matt\documents\visual studio 2015\projects\shipdesigner\ship_designer.c(142): warning C4026: function declared with formal parameter list
+c:\users\matt\documents\visual studio 2015\projects\shipdesigner\ship_designer.c(49): warning C4716: 'mat4_mul': must return a value
+  ShipDesigner.vcxproj -> c:\users\matt\documents\visual studio 2015\Projects\ShipDesigner\x64\Debug\ShipDesigner.exe
+  ShipDesigner.vcxproj -> c:\users\matt\documents\visual studio 2015\Projects\ShipDesigner\x64\Debug\ShipDesigner.pdb (Partial PDB)
