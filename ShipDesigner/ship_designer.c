@@ -3,9 +3,6 @@
 
 #include "w:/libs/platform.c"
 
-#define HANDMADE_MATH_IMPLEMENTATION
-#include "w:/lib/handmademath.h"
-
 #include "graphics.c"
 
 float2 make_float2(float x, float y) {
@@ -40,7 +37,17 @@ void make_perspective_matrix(float *out, float fov, float aspect, float near, fl
 	memcpy(out, mat, sizeof(float)*16);
 }
 
-void mat4_apply_mul(float *out, float *mat2) {
+mat4 mat4_identity() {
+	mat4 result = {
+		1, 0, 0, 0,
+		0, 1, 0, 0,
+		0, 0, 1, 0,
+		0, 0, 0, 1,
+	};
+	return result;
+}
+
+void mat4_apply_mul(float *out, mat4 mat2) {
 	float mat1[16];
 	memcpy(mat1, out, sizeof(float)*16);
 
@@ -49,7 +56,7 @@ void mat4_apply_mul(float *out, float *mat2) {
 	for (int row = 0; row < 4; ++row) {
 		for (int col = 0; col < 4; ++col) {
 			for (int i = 0; i < 4; ++i) {
-				out[row*4 + col] += mat1[row*4 + i] * mat2[i*4 + col];
+				out[row*4 + col] += mat1[row*4 + i] * mat2.e[i*4 + col];
 			}
 		}
 	}
@@ -65,6 +72,57 @@ mat4 mat4_mul(mat4 m1, mat4 m2) {
 			}
 		}
 	}
+}
+
+mat4 mat4_apply_translation(mat4 *m, float3 pos) {
+	mat4 result = {
+		1, 0, 0, 0,
+		0, 1, 0, 0,
+		0, 0, 1, 0,
+		pos.x, pos.y, pos.z, 1,
+	};
+	mat4_apply_mul(m, result);
+}
+
+void mat4_apply_rotate_x(mat4 *m, float rads) {
+	mat4 result = {
+		1, 0,          0,           0,
+		0, cosf(rads), -sinf(rads), 0,
+		0, sinf(rads), cosf(rads),  0,
+		0, 0,          0,           1,
+	};
+	mat4_apply_mul(m, result);
+}
+void mat4_apply_rotate_y(mat4 *m, float rads) {
+	mat4 result = {
+		cosf(rads),  0, sinf(rads), 0,
+		0,           1, 0,          0,
+		-sinf(rads), 0, cosf(rads), 0,
+		0,           0, 0,          1,
+	};
+	mat4_apply_mul(m, result);
+}
+void mat4_apply_rotate_z(mat4 *m, float rads) {
+	mat4 result = {
+		cosf(rads), -sinf(rads), 0, 0,
+		sinf(rads), cosf(rads),  0, 0,
+		0,          0,           1, 0,
+		0,          0,           0, 1,
+	};
+	mat4_apply_mul(m, result);
+}
+
+// todo: this seems terribly inefficient
+mat4_apply_euler(mat4 *m, float3 rotation) {
+	mat4_apply_rotate_x(m, rotation.x);
+	mat4_apply_rotate_y(m, rotation.y);
+	mat4_apply_rotate_z(m, rotation.z);
+}
+
+mat4 euler_to_mat4(float3 euler) {
+	mat4 result = mat4_identity();
+	mat4_apply_euler(&result, euler);
+	return result;
 }
 
 void float4_apply_mat4(float *out, float *mat) {
@@ -193,8 +251,8 @@ int main() {
 	//printf("%i, %s\n", __argc, __argv);
 
 	Rain rain = {0};
-	rain.window_width = 1280;
-	rain.window_height = 720;
+	rain.window_width = 1920;
+	rain.window_height = 1080;
 	rain.window_title = "Ship designer";
 	rain_init(&rain);
 
@@ -240,6 +298,24 @@ int main() {
 		"}\n"
 	);
 
+	GLuint screen_shader = shader_from_string(
+		"#version 330\n"
+		"in vec3 in_vertex;\n"
+		"in vec4 in_color;\n"
+		"out vec4 ex_color;\n"
+		"void main() {\n"
+		"	gl_Position = vec4(in_vertex, 1.0f);\n"
+		"	ex_color = in_color;\n"
+		"}\n",
+
+		"#version 330\n"
+		"in vec4 ex_color;\n"
+		"out vec4 out_color;\n"
+		"void main() {\n"
+		"	out_color = ex_color;\n"
+		"}\n"
+	);
+
 	float proj_mat[16];
 	make_perspective_matrix(proj_mat, 70, (float)rain.window_width/(float)rain.window_height, 0.1f, 100.0f);
 
@@ -263,8 +339,6 @@ int main() {
 	hmm_vec4 v2 = HMM_MultiplyMat4ByVec4(m, v);
 	debug_print("f %f, %f, %f, %f \n", v2.X, v2.Y, v2.Z, v2.W);*/
 
-	quaternion camera_rotation = quaternion_identity();
-
 	float3 geo_vertices[3*100];
 	int geo_indices[3*100];
 	int geo_vertex_count = 0;
@@ -277,6 +351,10 @@ int main() {
 	geo_indices[geo_index_count++] = geo_vertex_count++;\
 	geo_vertices[geo_vertex_count] = p2;\
 	geo_indices[geo_index_count++] = geo_vertex_count++;\
+
+	quaternion camera_rotation = quaternion_identity();
+	float3 camera_euler_rotation = {-0.5f};
+	mat4 camera_matrix;
 
 	while (!rain.quit) {
 		rain_update(&rain);
@@ -291,12 +369,19 @@ int main() {
 
 		if (rain.mouse.left.down) {
 			if (rain.mouse.position_delta.x) {
-				quaternion_apply(&camera_rotation, make_float3(0.0f, 1.0f, 0.0f), 0.001f * rain.mouse.position_delta.x);
+				//quaternion_apply(&camera_rotation, make_float3(0.0f, 1.0f, 0.0f), 0.001f * rain.mouse.position_delta.x);
+				camera_euler_rotation.y -= rain.mouse.position_delta.x * 0.001f;
 			}
 			if (rain.mouse.position_delta.y) {
-				quaternion_apply(&camera_rotation, make_float3(-1.0f, 0.0f, 0.0f), 0.001f * rain.mouse.position_delta.y);
+				//quaternion_apply(&camera_rotation, make_float3(-1.0f, 0.0f, 0.0f), 0.001f * rain.mouse.position_delta.y);
+				camera_euler_rotation.x -= rain.mouse.position_delta.y * 0.001f;
 			}
 		}
+
+		camera_matrix = mat4_identity();
+		mat4_apply_rotate_y(&camera_matrix, camera_euler_rotation.y);
+		mat4_apply_rotate_x(&camera_matrix, camera_euler_rotation.x);
+		mat4_apply_translation(&camera_matrix, make_float3(0, 0, -10.0f));
 
 		glViewport(0, 0, rain.window_width, rain.window_height);
 		glClearColor(0.0f, 0.2f, 0.5f, 0.0f);
@@ -309,32 +394,56 @@ int main() {
 		glLoadMatrixf(proj_mat);
 		glMatrixMode(GL_MODELVIEW);
 
+#define GRID_WIDTH 10
+#define GRID_HEIGHT 10
 		typedef struct {
 			bool hot;
 		} GridSquare;
-		GridSquare grid[100];
+		GridSquare grid[GRID_WIDTH+1 * GRID_HEIGHT+1];
 
-		use_shader(simple_shader/*0*/);
+		for (int i = 0; i < GRID_WIDTH*GRID_HEIGHT; ++i) {
+			float4 pos =	{(-GRID_WIDTH/2) + i%10,		0, (-GRID_HEIGHT/2) + i/10, 1.0f};
+			float4 posp00 = {(-GRID_WIDTH/2) + i%10,		0, (-GRID_HEIGHT/2) + i/10, 1.0f};
+			float4 posp10 = {(-GRID_WIDTH/2) + i%10 + 1.0f, 0, (-GRID_HEIGHT/2) + i/10, 1.0f};
+			float4 posp11 = {(-GRID_WIDTH/2) + i%10 + 1.0f, 0, (-GRID_HEIGHT/2) + i/10 + 1.0f, 1.0f};
+			float4 posp01 = {(-GRID_WIDTH/2) + i%10,		0, (-GRID_HEIGHT/2) + i/10 + 1.0f, 1.0f};
+			/*mat4 cam = quaternion_to_mat4(camera_rotation);*/
 
-		for (int i = 0; i < array_size(grid); ++i) {
-			float4 pos = {-5.0f + i%10, -5.0 + i/10, -10.0f};
-			float4 posp = pos;
-			float4 posp1 = pos;
-			posp1.x += 1;
-			posp1.y += 1;
-			mat4 cam = quaternion_to_mat4(camera_rotation);
-			float4_apply_mat4(&posp, &cam);
-			float4_apply_mat4(&posp1, &cam);
-			float4_apply_perspective(&posp, proj_mat);
-			float4_apply_perspective(&posp1, proj_mat);
+			/*mat4 cam = euler_to_mat4(camera_euler_rotation);
+			mat4_apply_rotate_y(&cam, camera_euler_rotation.y);
+			mat4_apply_rotate_x(&cam, camera_euler_rotation.x);
+			mat4_apply_translation(&cam, make_float3(0, 0, -10.0f));*/
 
-			float lo0 = lo(posp.x, posp.y, posp1.x, posp.y, mouse.x, mouse.y);
-			float lo1 = lo(posp1.x, posp.y, posp1.x, posp1.y, mouse.x, mouse.y);
-			float lo2 = lo(posp1.x, posp1.y, posp.x, posp.y, mouse.x, mouse.y);
+			float4_apply_mat4(&posp00, &camera_matrix);
+			float4_apply_mat4(&posp10, &camera_matrix);
+			float4_apply_mat4(&posp11, &camera_matrix);
+			float4_apply_mat4(&posp01, &camera_matrix);
+			float4_apply_perspective(&posp00, proj_mat);
+			float4_apply_perspective(&posp10, proj_mat);
+			float4_apply_perspective(&posp11, proj_mat);
+			float4_apply_perspective(&posp01, proj_mat);
 
-			float lo3 = lo(posp.x, posp.y, posp1.x, posp1.y, mouse.x, mouse.y);
-			float lo4 = lo(posp1.x, posp1.y, posp.x, posp1.y, mouse.x, mouse.y);
-			float lo5 = lo(posp.x, posp1.y, posp.x, posp.y, mouse.x, mouse.y);
+			float lo0 = lo(posp00.x, posp00.y, posp10.x, posp10.y, mouse.x, mouse.y);
+			float lo1 = lo(posp10.x, posp10.y, posp11.x, posp11.y, mouse.x, mouse.y);
+			float lo2 = lo(posp11.x, posp11.y, posp00.x, posp00.y, mouse.x, mouse.y);
+
+			float lo3 = lo(posp00.x, posp00.y, posp11.x, posp11.y, mouse.x, mouse.y);
+			float lo4 = lo(posp11.x, posp11.y, posp01.x, posp01.y, mouse.x, mouse.y);
+			float lo5 = lo(posp01.x, posp01.y, posp00.x, posp00.y, mouse.x, mouse.y);
+
+#if 0
+			use_shader(screen_shader);
+			float3 v[] = {posp00.x, posp00.y, 0.0f, // todo: why is z wrong?
+						  posp10.x, posp10.y, 0.0f,
+						  posp11.x, posp11.y, 0.0f,};
+			float4 c[] = {0.0f, 1.0f, 0.0f, 1.0f,
+						  0.0f, 1.0f, 0.0f, 1.0f,
+						  0.0f, 1.0f, 0.0f, 1.0f,};
+			glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, &v);
+			glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 0, &c);
+			glPointSize(4.0f);
+			glDrawArrays(GL_TRIANGLES, 0, 3);
+#endif
 
 			//float lo2 = lo(posp1.x, posp1.y, posp.x, posp1.y, mouse.x, mouse.y);
 			//float lo3 = lo(posp.x, posp1.y, posp.x, posp.y, mouse.x, mouse.y);
@@ -349,8 +458,11 @@ int main() {
 				glVertex3f(pos.x, pos.y+1, pos.z);
 				glEnd();
 			}*/
-			if (lo0 > 0 && lo1 > 0 && lo2 > 0) {
-				glColor4f(0.0f, 0.0f, 1.0f, 0.5f);
+
+			use_shader(simple_shader);
+
+			if (lo0 < 0 && lo1 < 0 && lo2 < 0) {
+				glColor4f(1.0f, 0.0f, 1.0f, 0.5f);
 				glBegin(GL_TRIANGLES);
 				glVertex3f(pos.x, pos.y, pos.z);
 				glVertex3f(pos.x+1, pos.y, pos.z);
@@ -365,7 +477,7 @@ int main() {
 				}
 			}
 			if (lo3 > 0 && lo4 > 0 && lo5 > 0) {
-				glColor4f(0.0f, 0.0f, 1.0f, 0.5f);
+				glColor4f(1.0f, 0.0f, 1.0f, 0.5f);
 				glBegin(GL_TRIANGLES);
 				glVertex3f(pos.x, pos.y, pos.z);
 				glVertex3f(pos.x+1, pos.y+1, pos.z);
@@ -381,15 +493,16 @@ int main() {
 			}
 		}
 
+		use_shader(simple_shader);
 		glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
 		glBegin(GL_LINES);
-		for (int y = 0; y < 11; ++y) {
-			glVertex3f(-5.0, -5.0 + y, -10.0);
-			glVertex3f(5.0, -5.0 + y, -10.0);
+		for (int y = 0; y < GRID_HEIGHT+1; ++y) {
+			glVertex3f(-GRID_WIDTH/2, 0.0f, -GRID_HEIGHT/2 + y);
+			glVertex3f(GRID_WIDTH/2, 0.0f, -GRID_HEIGHT/2 + y);
 		}
-		for (int x = 0; x < 11; ++x) {
-			glVertex3f(-5.0 + x, -5.0, -10.0);
-			glVertex3f(-5.0 + x, 5.0, -10.0);
+		for (int x = 0; x < GRID_WIDTH+1; ++x) {
+			glVertex3f(-GRID_WIDTH/2 + x, 0.0f, -GRID_HEIGHT/2);
+			glVertex3f(-GRID_WIDTH/2 + x, 0.0f, GRID_HEIGHT/2);
 		}
 		glEnd();
 
@@ -435,39 +548,20 @@ int main() {
 		glEnableVertexAttribArray(1);
 		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), vertices);
 		glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex), &vertices[0].color);
-		mat4 camera_rotation_matrix = quaternion_to_mat4(camera_rotation);
+		/*mat4 camera_rotation_matrix = quaternion_to_mat4(camera_rotation);*/
 		
-		static float rot = 0.0f;
-		rot += 0.01f;
-		mat4 m = {
-			1,  0,             0,             0,
-			0,  cosf(rot), -sinf(rot),  0,
-			0,  sinf(rot),  cosf(rot),  0,
-			0,  0,             0,             1,
-
-			/*cosf(rot),  -sinf(rot),  0,  0,
-			sinf(rot),   cosf(rot),  0,  0,
-			0,             0,              1,  0,
-			0,             0,              0,  1,*/
-
-			/*cosf(rot),  0,  sinf(rot),  0,
-			0,             1,  0,             0,
-			-sinf(rot),  0,  cosf(rot),  0,
-			0,             0,  0,             1,*/
-		};
-
 		int projection_uniform = glGetUniformLocation(simple_shader, "projection_matrix");
 		int camera_uniform = glGetUniformLocation(simple_shader, "camera_rotation");
 		glUniformMatrix4fv(projection_uniform, 1, GL_FALSE, proj_mat);
-		glUniformMatrix4fv(camera_uniform, 1, GL_FALSE, &camera_rotation_matrix);
-		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, indices);
+		glUniformMatrix4fv(camera_uniform, 1, GL_FALSE, &camera_matrix);
+		// glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, indices);
 
 
 		use_shader(geo_shader);
 		projection_uniform = glGetUniformLocation(geo_shader, "projection_matrix");
 		camera_uniform = glGetUniformLocation(geo_shader, "camera_rotation");
 		glUniformMatrix4fv(projection_uniform, 1, GL_FALSE, proj_mat);
-		glUniformMatrix4fv(camera_uniform, 1, GL_FALSE, &camera_rotation_matrix);
+		glUniformMatrix4fv(camera_uniform, 1, GL_FALSE, &camera_matrix);
 
 		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float3), geo_vertices);
 		glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex), &vertices[0].color);
