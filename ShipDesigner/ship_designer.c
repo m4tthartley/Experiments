@@ -20,6 +20,17 @@ float4 make_float4(float x, float y, float z, float w) {
 	return result;
 }
 
+float4 make_float4_from_float3(float3 f, float w) {
+	float4 result = {f.x, f.y, f.z, w};
+	return result;
+}
+
+float float2_dist(float2 a, float2 b) {
+	float2 f = {a.x-b.x, a.y-b.y};
+	float result = sqrtf(f.x*f.x + f.y*f.y);
+	return result;
+}
+
 #define PI 3.14159265359f
 #define PI2 (3.14159265359f*2.0f)
 void make_perspective_matrix(float *out, float fov, float aspect, float near, float far) {
@@ -344,6 +355,9 @@ int main() {
 	int geo_vertex_count = 0;
 	int geo_index_count = 0;
 
+	float3 tri_add_buffer[3];
+	int tri_add_count = 0;
+
 #define add_geo_triangle(p0, p1, p2)\
 	geo_vertices[geo_vertex_count] = p0;\
 	geo_indices[geo_index_count++] = geo_vertex_count++;\
@@ -367,14 +381,14 @@ int main() {
 			debug_print("mouse  x%i y%i wheel%i\n", rain.mouse.position_delta.x, rain.mouse.position_delta.y, rain.mouse.wheel_delta);
 		}*/
 
-		if (rain.mouse.left.down) {
+		if (rain.mouse.middle.down) {
 			if (rain.mouse.position_delta.x) {
 				//quaternion_apply(&camera_rotation, make_float3(0.0f, 1.0f, 0.0f), 0.001f * rain.mouse.position_delta.x);
-				camera_euler_rotation.y -= rain.mouse.position_delta.x * 0.001f;
+				camera_euler_rotation.y -= rain.mouse.position_delta.x * 0.002f;
 			}
 			if (rain.mouse.position_delta.y) {
 				//quaternion_apply(&camera_rotation, make_float3(-1.0f, 0.0f, 0.0f), 0.001f * rain.mouse.position_delta.y);
-				camera_euler_rotation.x -= rain.mouse.position_delta.y * 0.001f;
+				camera_euler_rotation.x -= rain.mouse.position_delta.y * 0.002f;
 			}
 		}
 
@@ -384,14 +398,15 @@ int main() {
 		mat4_apply_translation(&camera_matrix, make_float3(0, 0, -10.0f));
 
 		glViewport(0, 0, rain.window_width, rain.window_height);
-		glClearColor(0.0f, 0.2f, 0.5f, 0.0f);
+		//glClearColor(0.0f, 0.2f, 0.5f, 0.0f);
+		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 
 		glEnable(GL_DEPTH_TEST);
 		glEnable(GL_ALPHA_TEST);
 		glBlendFunc(GL_ONE_MINUS_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 		glMatrixMode(GL_PROJECTION);
-		glLoadMatrixf(proj_mat);
+		//glLoadMatrixf(proj_mat);
 		glMatrixMode(GL_MODELVIEW);
 
 #define GRID_WIDTH 10
@@ -399,7 +414,62 @@ int main() {
 		typedef struct {
 			bool hot;
 		} GridSquare;
-		GridSquare grid[GRID_WIDTH+1 * GRID_HEIGHT+1];
+		GridSquare grid[(GRID_WIDTH+1) * (GRID_HEIGHT+1)];
+		// float3 
+
+#if 0
+		float4 closest_point;
+		float4 closest_p;
+		for (int i = 0; i < array_size(grid); ++i) {
+			float4 pos = {(-GRID_WIDTH/2) + i%11, 0, (-GRID_HEIGHT/2) + i/11, 1.0f};
+			float4 p = pos;
+			float4_apply_mat4(&pos, &camera_matrix);
+			float4_apply_perspective(&pos, proj_mat);
+			if (i==0) {
+				closest_point = pos;
+				closest_p = p;
+			} else {
+				float d0 = float2_dist(pos.xy, mouse);
+				float d1 = float2_dist(closest_point.xy, mouse);
+				if (d0 < d1) {
+					closest_point = pos;
+					closest_p = p;
+				}
+			}
+		}
+
+		if (rain.mouse.right.released) {
+			/*geo_vertices[geo_vertex_count] = closest_p.xyz;
+			geo_indices[geo_index_count++] = geo_vertex_count++;*/
+			tri_add_buffer[tri_add_count++] = closest_p.xyz;
+			if (tri_add_count == 3) {
+				geo_vertices[geo_vertex_count] = tri_add_buffer[0];
+				geo_indices[geo_index_count++] = geo_vertex_count++;
+				geo_vertices[geo_vertex_count] = tri_add_buffer[1];
+				geo_indices[geo_index_count++] = geo_vertex_count++;
+				geo_vertices[geo_vertex_count] = tri_add_buffer[2];
+				geo_indices[geo_index_count++] = geo_vertex_count++;
+				tri_add_count = 0;
+			}
+		}
+
+		use_shader(0);
+		glPointSize(4);
+		glColor4f(0.0f, 1.0f, 0.0f, 1.0f);
+		glBegin(GL_POINTS);
+		glVertex3f(closest_point.x, closest_point.y, closest_point.z);
+		glEnd();
+
+		for (int i = 0; i < tri_add_count; ++i) {
+			glColor4f(0.0f, 1.0f, 1.0f, 1.0f);
+			glBegin(GL_POINTS);
+			float4 pos = make_float4_from_float3(tri_add_buffer[i], 1.0f);
+			float4_apply_mat4(&pos, &camera_matrix);
+			float4_apply_perspective(&pos, proj_mat);
+			glVertex3f(pos.x, pos.y, pos.z);
+			glEnd();
+		}
+#endif
 
 		for (int i = 0; i < GRID_WIDTH*GRID_HEIGHT; ++i) {
 			float4 pos =	{(-GRID_WIDTH/2) + i%10,		0, (-GRID_HEIGHT/2) + i/10, 1.0f};
@@ -408,11 +478,6 @@ int main() {
 			float4 posp11 = {(-GRID_WIDTH/2) + i%10 + 1.0f, 0, (-GRID_HEIGHT/2) + i/10 + 1.0f, 1.0f};
 			float4 posp01 = {(-GRID_WIDTH/2) + i%10,		0, (-GRID_HEIGHT/2) + i/10 + 1.0f, 1.0f};
 			/*mat4 cam = quaternion_to_mat4(camera_rotation);*/
-
-			/*mat4 cam = euler_to_mat4(camera_euler_rotation);
-			mat4_apply_rotate_y(&cam, camera_euler_rotation.y);
-			mat4_apply_rotate_x(&cam, camera_euler_rotation.x);
-			mat4_apply_translation(&cam, make_float3(0, 0, -10.0f));*/
 
 			float4_apply_mat4(&posp00, &camera_matrix);
 			float4_apply_mat4(&posp10, &camera_matrix);
@@ -445,52 +510,66 @@ int main() {
 			glDrawArrays(GL_TRIANGLES, 0, 3);
 #endif
 
-			//float lo2 = lo(posp1.x, posp1.y, posp.x, posp1.y, mouse.x, mouse.y);
-			//float lo3 = lo(posp.x, posp1.y, posp.x, posp.y, mouse.x, mouse.y);
-			//if (i==0) debug_print("%f %f %f %f\n", lo0, lo1, lo2, lo3);
+			use_shader(simple_shader);
 
-			/*if (lo0 > 0 && lo1 > 0 && lo2 > 0 && lo3 > 0) {
-				glColor4f(0.0f, 0.0f, 1.0f, 0.5f);
+			if (lo0 < 0 && lo1 < 0 && lo4 < 0 && lo5 < 0) {
+				glColor4f(1.0f, 0.0f, 1.0f, 0.5f);
 				glBegin(GL_QUADS);
 				glVertex3f(pos.x, pos.y, pos.z);
 				glVertex3f(pos.x+1, pos.y, pos.z);
-				glVertex3f(pos.x+1, pos.y+1, pos.z);
-				glVertex3f(pos.x, pos.y+1, pos.z);
+				glVertex3f(pos.x+1, pos.y, pos.z+1);
+				glVertex3f(pos.x, pos.y, pos.z+1);
 				glEnd();
-			}*/
 
-			use_shader(simple_shader);
-
+				//if (float2_dist(posp00.xy, mouse) < )
+				/*float4 p = posp00;
+				float d = float2_dist(posp00.xy, mouse);
+				float dd;
+				if ((dd = float2_dist(posp10.xy, mouse)) < d) {
+					p = posp10;
+					d = dd;
+				}
+				if ((dd = float2_dist(posp11.xy, mouse)) < d) {
+					p = posp11;
+					d = dd;
+				}
+				if ((dd = float2_dist(posp01.xy, mouse)) < d) {
+					p = posp01;
+					d = dd;
+				}*/
+			}
+#if 0
 			if (lo0 < 0 && lo1 < 0 && lo2 < 0) {
 				glColor4f(1.0f, 0.0f, 1.0f, 0.5f);
 				glBegin(GL_TRIANGLES);
 				glVertex3f(pos.x, pos.y, pos.z);
 				glVertex3f(pos.x+1, pos.y, pos.z);
-				glVertex3f(pos.x+1, pos.y+1, pos.z);
+				glVertex3f(pos.x+1, pos.y, pos.z+1);
 				glEnd();
 
 				if (rain.mouse.left.released) {
 					float3 p0 = pos.xyz;
 					float3 p1 = {pos.x+1, pos.y, pos.z};
-					float3 p2 = {pos.x+1, pos.y+1, pos.z};
+					float3 p2 = {pos.x+1, pos.y, pos.z+1};
 					add_geo_triangle(p0, p1, p2);
 				}
 			}
-			if (lo3 > 0 && lo4 > 0 && lo5 > 0) {
+			if (lo3 < 0 && lo4 < 0 && lo5 < 0) {
 				glColor4f(1.0f, 0.0f, 1.0f, 0.5f);
 				glBegin(GL_TRIANGLES);
 				glVertex3f(pos.x, pos.y, pos.z);
-				glVertex3f(pos.x+1, pos.y+1, pos.z);
-				glVertex3f(pos.x, pos.y+1, pos.z);
+				glVertex3f(pos.x+1, pos.y, pos.z+1);
+				glVertex3f(pos.x, pos.y, pos.z+1);
 				glEnd();
 
 				if (rain.mouse.left.released) {
 					float3 p0 = pos.xyz;
-					float3 p1 = {pos.x+1, pos.y+1, pos.z};
-					float3 p2 = {pos.x, pos.y+1, pos.z};
+					float3 p1 = {pos.x+1, pos.y, pos.z+1};
+					float3 p2 = {pos.x, pos.y, pos.z+1};
 					add_geo_triangle(p0, p1, p2);
 				}
 			}
+#endif
 		}
 
 		use_shader(simple_shader);
@@ -565,7 +644,8 @@ int main() {
 
 		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float3), geo_vertices);
 		glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex), &vertices[0].color);
-		glDrawElements(GL_TRIANGLES, geo_index_count, GL_UNSIGNED_INT, geo_indices);
+		glDrawElements(GL_TRIANGLES, (geo_index_count/3)*3, GL_UNSIGNED_INT, geo_indices);
+		debug_print("geo_index_count %i\n", (geo_index_count/3)*3);
 #endif
 	}
 }
