@@ -3,8 +3,7 @@ w:\miscellaneous\shipdesigner\graphics.c(30): warning C4005: 'GL_EXTENSIONS': ma
   c:\program files (x86)\windows kits\8.1\include\um\gl\gl.h(897): note: see previous definition of 'GL_EXTENSIONS'
 w:\miscellaneous\shipdesigner\ship_designer.c(261): warning C4026: function declared with formal parameter list
 w:\miscellaneous\shipdesigner\ship_designer.c(358): warning C4101: 'tri_add_buffer': unreferenced local variable
-w:\miscellaneous\shipdesigner\ship_designer.c(369): warning C4101: 'camera_rotation': unreferenced local variable
-w:\miscellaneous\shipdesigner\ship_designer.c(417): warning C4101: 'grid': unreferenced local variable
+w:\miscellaneous\shipdesigner\ship_designer.c(395): warning C4101: 'camera_rotation': unreferenced local variable
 w:\miscellaneous\shipdesigner\ship_designer.c(86): warning C4716: 'mat4_mul': must return a value
 w:\miscellaneous\shipdesigner\ship_designer.c(96): warning C4716: 'mat4_apply_translation': must return a value
   ShipDesigner.vcxproj -> W:\Miscellaneous\ShipDesigner\x64\Debug\ShipDesigner.exe
