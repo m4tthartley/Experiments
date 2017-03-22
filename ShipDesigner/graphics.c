@@ -27,6 +27,7 @@
 	\
 	GLE(GLint, GetUniformLocation, GLuint program, const GLchar *name)\
 	GLE(void, UniformMatrix4fv, GLint location, GLsizei count, GLboolean transpose, const GLfloat *value)\
+	GLE(void, Uniform4f, GLint location, GLfloat v0, GLfloat v1, GLfloat v2, GLfloat v3)\
 
 
 #define GLE(ret, name, ...) typedef ret name##_proc(__VA_ARGS__); name##_proc *gl##name;

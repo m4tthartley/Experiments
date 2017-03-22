@@ -5,6 +5,11 @@
 
 #include "graphics.c"
 
+int2 make_int2(int x, int y) {
+	int2 result = {x, y};
+	return result;
+}
+
 float2 make_float2(float x, float y) {
 	float2 result = {x, y};
 	return result;
@@ -302,10 +307,11 @@ int main() {
 		"}\n",
 
 		"#version 330\n"
+		"uniform vec4 color;\n"
 		"in vec4 ex_color;\n"
 		"out vec4 out_color;\n"
 		"void main() {\n"
-		"	out_color = vec4(0.0f, 0.0f, 1.0f, 1.0f);\n"
+		"	out_color = color;\n"
 		"}\n"
 	);
 
@@ -373,21 +379,26 @@ int main() {
 	int shape_count = 0;
 
 #define add_shape(v0, v1, v2)\
-	shapes[shape_count].vertices[0] = v0;\
-	shapes[shape_count].vertices[1] = v1;\
-	shapes[shape_count].vertices[2] = v2;\
-	int i = v0.y*(GRID_WIDTH+1) + v0.x;\
-	grid[i].shapes[grid[i].shape_count++] = shape_count;\
-	i = v1.y*(GRID_WIDTH+1) + v1.x;\
-	grid[i].shapes[grid[i].shape_count++] = shape_count;\
-	i = v2.y*(GRID_WIDTH+1) + v2.x;\
-	grid[i].shapes[grid[i].shape_count++] = shape_count;\
-	++shape_count;\
+	if (shape_count < array_size(shapes)) {\
+		shapes[shape_count].vertices[0] = v0; \
+		shapes[shape_count].vertices[1] = v1; \
+		shapes[shape_count].vertices[2] = v2; \
+		int i = v0.y*(GRID_WIDTH+1) + v0.x; \
+		grid[i].shapes[grid[i].shape_count++] = shape_count; \
+		i = v1.y*(GRID_WIDTH+1) + v1.x; \
+		grid[i].shapes[grid[i].shape_count++] = shape_count; \
+		i = v2.y*(GRID_WIDTH+1) + v2.x; \
+		grid[i].shapes[grid[i].shape_count++] = shape_count; \
+		++shape_count; \
+	} else {\
+		debug_print("Ran out of shape space!\n");\
+	}\
 
 #define GRID_WIDTH 10
 #define GRID_HEIGHT 10
+#define GRID_CELL_SHAPE_MAX 8
 	typedef struct {
-		int shapes[8];
+		int shapes[GRID_CELL_SHAPE_MAX];
 		int shape_count;
 	} GridSquare;
 	GridSquare grid[(GRID_WIDTH+1) * (GRID_HEIGHT+1)] = {0};
@@ -477,14 +488,69 @@ int main() {
 				for (int k = 0; k < 3; ++k) {
 					if (shapes[grid[i].shapes[j]].vertices[k].x == drag_start.x &&
 						shapes[grid[i].shapes[j]].vertices[k].y == drag_start.y) {
-						shapes[grid[i].shapes[j]].vertices[k].x = closest_grid.x;
-						shapes[grid[i].shapes[j]].vertices[k].y = closest_grid.y;
-						grid[closest_grid.y*(GRID_WIDTH+1) + closest_grid.x].shapes[grid[closest_grid.y*(GRID_WIDTH+1) + closest_grid.x].shape_count++] = grid[i].shapes[j];
-						grid[i].shapes[j] = grid[i].shapes[grid[i].shape_count-1];
-						--grid[i].shape_count;
+						if (grid[closest_grid.y*(GRID_WIDTH+1) + closest_grid.x].shape_count < GRID_CELL_SHAPE_MAX) {
+							shapes[grid[i].shapes[j]].vertices[k].x = closest_grid.x;
+							shapes[grid[i].shapes[j]].vertices[k].y = closest_grid.y;
+							grid[closest_grid.y*(GRID_WIDTH+1) + closest_grid.x].shapes[grid[closest_grid.y*(GRID_WIDTH+1) + closest_grid.x].shape_count++] = grid[i].shapes[j];
+							grid[i].shapes[j] = grid[i].shapes[grid[i].shape_count-1];
+							--grid[i].shape_count;
+							--j; // redo this shape index
+							break;
+						} else {
+							debug_print("max shapes reached for grid cell %i %i\n", closest_grid.x, closest_grid.y);
+						}
+					}
+				}
+			}
+		}
+
+		// todo: this would be simpler to loop though shapes and compare vertices since they are integers
+		// check for triangle vertices in the same cell and remove
+#if 1
+		for (int i = 0; i < array_size(grid); ++i) {
+			//int shape = grid[i].shapes[0];
+			bool shape_indices[array_size(shapes)] = {0}; // hash table, kinda
+			for (int j = 0; j < grid[i].shape_count; ++j) {
+				int shape_index = grid[i].shapes[j];
+				if (shape_indices[shape_index]) {
+					debug_print("removing shape...\n");
+					for (int k = 0; k < 3; ++k) {
+						int2 v = shapes[shape_index].vertices[k];
+						for (int l = 0; l < grid[v.y*(GRID_WIDTH+1) + v.x].shape_count; ++l) {
+							if (grid[v.y*(GRID_WIDTH+1) + v.x].shapes[l] == shape_index) {
+								if (grid[v.y*(GRID_WIDTH+1) + v.x].shape_count > 1) {
+									grid[v.y*(GRID_WIDTH+1) + v.x].shapes[l] = grid[v.y*(GRID_WIDTH+1) + v.x].shapes[grid[v.y*(GRID_WIDTH+1) + v.x].shape_count-- -1];
+								} else {
+									--grid[v.y*(GRID_WIDTH+1) + v.x].shape_count;
+								}
+								break;
+							}
+						}
+						// grid[v.y*(GRID_WIDTH+1) + v.x]
+					}
+					if (shape_count > 1) {
+						shapes[shape_index] = shapes[shape_count-- -1];
+					} else {
+						--shape_count;
+					}
+				}
+				shape_indices[shape_index] = true;
+			}
+		}
+#endif
+
+		// check for errors
+		for (int i = 0; i < shape_count; ++i) {
+			for (int j = 0; j < 3; ++j) {
+				int2 v = shapes[i].vertices[j];
+				bool found = false;
+				for (int k = 0; k < grid[v.y*(GRID_WIDTH+1) + v.x].shape_count; ++k) {
+					if (grid[v.y*(GRID_WIDTH+1) + v.x].shapes[k] == i) {
+						found = true;
 						break;
 					}
 				}
+				if (!found) debug_print("error, shape not found in grid\n");
 			}
 		}
 
@@ -568,55 +634,67 @@ int main() {
 						glVertex3f(pos.x+0.5f, pos.y, pos.z);
 						glVertex3f(pos.x+0.5f, pos.y, pos.z+0.5f);
 						glVertex3f(pos.x, pos.y, pos.z+0.5f);*/
-						float3 p0;
-						float3 p1;
-						float3 p2;
+						int2 i0;
+						int2 i1;
+						int2 i2;
 						switch (j) {
 						case 0:
-							p0 = make_float3(p.x, p.y, p.z);
+							/*p0 = make_float3(p.x, p.y, p.z);
 							p1 = make_float3(p.x+1, p.y, p.z);
-							p2 = make_float3(p.x, p.y, p.z+1);
+							p2 = make_float3(p.x, p.y, p.z+1);*/
 							/*glVertex3f(p.x, p.y, p.z);
 							glVertex3f(p.x+1, p.y, p.z);
 							glVertex3f(p.x, p.y, p.z+1);*/
+							i0 = make_int2(x, y);
+							i1 = make_int2(x+1, y);
+							i2 = make_int2(x, y+1);
 							break;
 						case 1:
-							p0 = make_float3(p.x, p.y, p.z);
+							/*p0 = make_float3(p.x, p.y, p.z);
 							p1 = make_float3(p.x+1, p.y, p.z);
-							p2 = make_float3(p.x+1, p.y, p.z+1);
+							p2 = make_float3(p.x+1, p.y, p.z+1);*/
 							/*glVertex3f(p.x, p.y, p.z);
 							glVertex3f(p.x+1, p.y, p.z);
 							glVertex3f(p.x+1, p.y, p.z+1);*/
+							i0 = make_int2(x, y);
+							i1 = make_int2(x+1, y);
+							i2 = make_int2(x+1, y+1);
 							break;
 						case 2:
-							p0 = make_float3(p.x, p.y, p.z);
+							/*p0 = make_float3(p.x, p.y, p.z);
 							p1 = make_float3(p.x+1, p.y, p.z+1);
-							p2 = make_float3(p.x, p.y, p.z+1);
+							p2 = make_float3(p.x, p.y, p.z+1);*/
 							/*glVertex3f(p.x, p.y, p.z);
 							glVertex3f(p.x+1, p.y, p.z+1);
 							glVertex3f(p.x, p.y, p.z+1);*/
+							i0 = make_int2(x, y);
+							i1 = make_int2(x+1, y+1);
+							i2 = make_int2(x, y+1);
 							break;
 						case 3:
-							p0 = make_float3(p.x+1, p.y, p.z);
+							/*p0 = make_float3(p.x+1, p.y, p.z);
 							p1 = make_float3(p.x+1, p.y, p.z+1);
-							p2 = make_float3(p.x, p.y, p.z+1);
+							p2 = make_float3(p.x, p.y, p.z+1);*/
 							/*glVertex3f(p.x+1, p.y, p.z);
 							glVertex3f(p.x+1, p.y, p.z+1);
 							glVertex3f(p.x, p.y, p.z+1);*/
+							i0 = make_int2(x+1, y);
+							i1 = make_int2(x+1, y+1);
+							i2 = make_int2(x, y+1);
 							break;
 						}
 
 						if (rain.mouse.right.down) {
-							glVertex3f(p0.x, p0.y, p0.z);
-							glVertex3f(p1.x, p1.y, p1.z);
-							glVertex3f(p2.x, p2.y, p2.z);
+							glVertex3f(-5.0f + i0.x, 0, -5.0f + i0.y);
+							glVertex3f(-5.0f + i1.x, 0, -5.0f + i1.y);
+							glVertex3f(-5.0f + i2.x, 0, -5.0f + i2.y);
 						}
 						glEnd();
 
 						if (rain.mouse.right.released) {
-							int2 i0 = {x, y};
+							/*int2 i0 = {x, y};
 							int2 i1 = {x+1, y};
-							int2 i2 = {x+1, y+1};
+							int2 i2 = {x+1, y+1};*/
 							//add_geo_triangle(p0, p1, p2);
 							add_shape(i0, i1, i2);
 						}
@@ -793,9 +871,32 @@ int main() {
 				add_geo_triangle(p0, p1, p2);
 			}
 
+			float3 lines[array_size(geo_vertices)*2];
+			int line_count = 0;
+			for (int i = 0; i < geo_vertex_count; i += 3) {
+				lines[line_count] = geo_vertices[i];
+				lines[line_count++].y = 0.01f;
+				lines[line_count] = geo_vertices[i+1];
+				lines[line_count++].y = 0.01f;
+				lines[line_count] = geo_vertices[i+1];
+				lines[line_count++].y = 0.01f;
+				lines[line_count] = geo_vertices[i+2];
+				lines[line_count++].y = 0.01f;
+				lines[line_count] = geo_vertices[i+2];
+				lines[line_count++].y = 0.01f;
+				lines[line_count] = geo_vertices[i];
+				lines[line_count++].y = 0.01f;
+			}
+
 			glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float3), geo_vertices);
 			glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex), &vertices[0].color);
+			glUniform4f(glGetUniformLocation(geo_shader, "color"), 0.0f, 0.0f, 1.0f, 1.0f);
 			glDrawElements(GL_TRIANGLES, (geo_index_count/3)*3, GL_UNSIGNED_INT, geo_indices);
+			
+			//glDrawElements(GL_LINE, (geo_index_count/3)*3, GL_UNSIGNED_INT, geo_indices);
+			glUniform4f(glGetUniformLocation(geo_shader, "color"), 0.0f, 1.0f, 0.0f, 1.0f);
+			glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, lines);
+			glDrawArrays(GL_LINES, 0, line_count);
 			//debug_print("geo_index_count %i\n", (geo_index_count/3)*3);
 		}
 #endif
