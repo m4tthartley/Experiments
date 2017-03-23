@@ -291,7 +291,9 @@ int main() {
 		"out vec4 out_color;\n"
 		"void main() {\n"
 		"	out_color = ex_color;\n"
-		"}\n"
+		"}\n",
+
+		NULL
 	);
 
 	GLuint geo_shader = shader_from_string(
@@ -309,9 +311,27 @@ int main() {
 		"#version 330\n"
 		"uniform vec4 color;\n"
 		"in vec4 ex_color;\n"
+		"in vec3 ex_normal;\n"
 		"out vec4 out_color;\n"
 		"void main() {\n"
-		"	out_color = color;\n"
+		"	out_color = vec4(ex_normal, 1.0f);\n"
+		"}\n",
+
+		"#version 330\n"
+		"layout(triangles) in;\n"
+		"layout(triangle_strip, max_vertices = 3) out;\n"
+		"out vec3 ex_normal;\n"
+		"void main() {\n"
+		"	ex_normal = vec3(1.0f, 1.0f, 0.0f);\n"
+		"	gl_Position = gl_in[0].gl_Position;\n"
+		"	EmitVertex();\n"
+		"	ex_normal = vec3(0.0f, 1.0f, 0.0f);\n"
+		"	gl_Position = gl_in[1].gl_Position;\n"
+		"	EmitVertex();\n"
+		"	ex_normal = vec3(0.0f, 1.0f, 1.0f);\n"
+		"	gl_Position = gl_in[2].gl_Position;\n"
+		"	EmitVertex();\n"
+		"	EndPrimitive();\n"
 		"}\n"
 	);
 
@@ -330,25 +350,27 @@ int main() {
 		"out vec4 out_color;\n"
 		"void main() {\n"
 		"	out_color = ex_color;\n"
-		"}\n"
+		"}\n",
+
+		NULL
 	);
 
 	float proj_mat[16];
 	make_perspective_matrix(proj_mat, 70, (float)rain.window_width/(float)rain.window_height, 0.1f, 100.0f);
 
 	float4 f = {-5.0f, 5.0f, -10.0f, 1.0f};
-	debug_print("f %f, %f, %f, %f \n", f.x, f.y, f.z, f.w);
+	//debug_print("f %f, %f, %f, %f \n", f.x, f.y, f.z, f.w);
 	float4_apply_mat4(&f, proj_mat);
-	debug_print("mr0 %f, %f, %f, %f \n", proj_mat[0], proj_mat[1], proj_mat[2], proj_mat[3]);
+	/*debug_print("mr0 %f, %f, %f, %f \n", proj_mat[0], proj_mat[1], proj_mat[2], proj_mat[3]);
 	debug_print("mr1 %f, %f, %f, %f \n", proj_mat[4], proj_mat[5], proj_mat[6], proj_mat[7]);
 	debug_print("mr2 %f, %f, %f, %f \n", proj_mat[8], proj_mat[9], proj_mat[10], proj_mat[11]);
-	debug_print("mr3 %f, %f, %f, %f \n", proj_mat[12], proj_mat[13], proj_mat[14], proj_mat[15]);
+	debug_print("mr3 %f, %f, %f, %f \n", proj_mat[12], proj_mat[13], proj_mat[14], proj_mat[15]);*/
 
-	debug_print("f %f, %f, %f, %f \n", f.x, f.y, f.z, f.w);
+	/*debug_print("f %f, %f, %f, %f \n", f.x, f.y, f.z, f.w);
 	f.x /= f.w;
 	f.y /= f.w;
 	f.z /= f.w;
-	debug_print("f %f, %f, %f, %f \n", f.x, f.y, f.z, f.w);
+	debug_print("f %f, %f, %f, %f \n", f.x, f.y, f.z, f.w);*/
 
 	/*hmm_mat4 m;
 	memcpy(&m, proj_mat, sizeof(float)*16);
@@ -506,7 +528,7 @@ int main() {
 
 		// todo: this would be simpler to loop though shapes and compare vertices since they are integers
 		// check for triangle vertices in the same cell and remove
-#if 1
+#if 0
 		for (int i = 0; i < array_size(grid); ++i) {
 			//int shape = grid[i].shapes[0];
 			bool shape_indices[array_size(shapes)] = {0}; // hash table, kinda
@@ -516,12 +538,14 @@ int main() {
 					debug_print("removing shape...\n");
 					for (int k = 0; k < 3; ++k) {
 						int2 v = shapes[shape_index].vertices[k];
-						for (int l = 0; l < grid[v.y*(GRID_WIDTH+1) + v.x].shape_count; ++l) {
-							if (grid[v.y*(GRID_WIDTH+1) + v.x].shapes[l] == shape_index) {
-								if (grid[v.y*(GRID_WIDTH+1) + v.x].shape_count > 1) {
-									grid[v.y*(GRID_WIDTH+1) + v.x].shapes[l] = grid[v.y*(GRID_WIDTH+1) + v.x].shapes[grid[v.y*(GRID_WIDTH+1) + v.x].shape_count-- -1];
+						int gi = v.y*(GRID_WIDTH+1) + v.x;
+						for (int l = 0; l < grid[gi].shape_count; ++l) {
+							if (grid[gi].shapes[l] == shape_index) {
+								if (grid[gi].shape_count > 1) {
+									grid[gi].shapes[l] = grid[gi].shapes[grid[gi].shape_count-1];
+									--grid[gi].shape_count;
 								} else {
-									--grid[v.y*(GRID_WIDTH+1) + v.x].shape_count;
+									--grid[gi].shape_count;
 								}
 								break;
 							}
@@ -529,15 +553,49 @@ int main() {
 						// grid[v.y*(GRID_WIDTH+1) + v.x]
 					}
 					if (shape_count > 1) {
-						shapes[shape_index] = shapes[shape_count-- -1];
+						shapes[shape_index] = shapes[shape_count -1];
+						--shape_count;
 					} else {
 						--shape_count;
 					}
+					shape_indices[shape_index] = false;
+				} else {
+					shape_indices[shape_index] = true;
 				}
-				shape_indices[shape_index] = true;
 			}
 		}
 #endif
+		for (int i = 0; i < shape_count; ++i) {
+			for (int j = 0; j < 3; ++j) {
+				int2 v = shapes[i].vertices[j];
+				int gi = v.y*(GRID_WIDTH+1) + v.x;
+				int found = 0;
+				for (int k = 0; k < grid[gi].shape_count; ++k) {
+					if (grid[gi].shapes[k]==i) ++found;
+				}
+				if (found > 1) {
+					for (int jj = 0; jj < 3; ++jj) {
+						int2 v = shapes[i].vertices[jj];
+						int gi = v.y*(GRID_WIDTH+1) + v.x;
+						for (int k = 0; k < grid[gi].shape_count; ++k) {
+							if (grid[gi].shapes[k]==i) {
+								grid[gi].shapes[k] = grid[gi].shapes[grid[gi].shape_count-1];
+								--grid[gi].shape_count;
+							}
+						}
+					}
+					/*shapes[i] = shapes[shape_count-1];
+					--shape_count;*/
+					shapes[i].vertices[0].x = 0;
+					shapes[i].vertices[0].y = 0;
+					shapes[i].vertices[1].x = 0;
+					shapes[i].vertices[1].y = 0;
+					shapes[i].vertices[2].x = 0;
+					shapes[i].vertices[2].y = 0;
+					break;
+				}
+			}
+		}
 
 		// check for errors
 		for (int i = 0; i < shape_count; ++i) {

@@ -44,7 +44,7 @@ void load_opengl_extensions() {
 	//glCreateShader = (CreateShader_proc*)wglGetProcAddress("glCreateShader ");
 }
 
-GLuint shader_from_string(char *vs, char *fs) {
+GLuint shader_from_string(char *vs, char *fs, char *gs) {
 	GLuint vshader = glCreateShader(GL_VERTEX_SHADER);
 	GLuint fshader = glCreateShader(GL_FRAGMENT_SHADER);
 	int vlen = strlen(vs);
@@ -59,9 +59,21 @@ GLuint shader_from_string(char *vs, char *fs) {
 	glGetShaderInfoLog(fshader, 256, NULL, buffer);
 	OutputDebugString(buffer);
 
+	GLuint gshader;
+	if (gs) {
+		gshader = glCreateShader(GL_GEOMETRY_SHADER);
+		int glen = strlen(gs);
+		glShaderSource(gshader, 1, &gs, &glen);
+		glCompileShader(gshader);
+		char buffer[256];
+		glGetShaderInfoLog(gshader, 256, NULL, buffer);
+		OutputDebugString(buffer);
+	}
+
 	GLuint program = glCreateProgram();
 	glAttachShader(program, vshader);
 	glAttachShader(program, fshader);
+	if (gs) glAttachShader(program, gshader);
 	glLinkProgram(program);
 
 	return program;
