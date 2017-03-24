@@ -10,6 +10,11 @@ int2 make_int2(int x, int y) {
 	return result;
 }
 
+int3 make_int3(int x, int y, int z) {
+	int3 result = {x, y, z};
+	return result;
+}
+
 float2 make_float2(float x, float y) {
 	float2 result = {x, y};
 	return result;
@@ -304,7 +309,8 @@ int main() {
 		"in vec4 in_color;\n"
 		"out vec4 ex_color;\n"
 		"void main() {\n"
-		"	gl_Position = projection_matrix * (camera_rotation * vec4(in_vertex, 1.0f));\n"
+		"	//gl_Position = projection_matrix * (camera_rotation * vec4(in_vertex, 1.0f));\n"
+		"	gl_Position = vec4(in_vertex, 1.0f);\n"
 		"	ex_color = in_color;\n"
 		"}\n",
 
@@ -314,22 +320,31 @@ int main() {
 		"in vec3 ex_normal;\n"
 		"out vec4 out_color;\n"
 		"void main() {\n"
-		"	out_color = vec4(ex_normal, 1.0f);\n"
+		"	float light = clamp(dot(ex_normal, normalize(vec3(-1, -1, 1))), 0, 1);\n"
+		"	out_color = vec4(vec3(0, 0, 1)*light, 1.0f);\n"
 		"}\n",
 
 		"#version 330\n"
 		"layout(triangles) in;\n"
 		"layout(triangle_strip, max_vertices = 3) out;\n"
+		"uniform mat4 projection_matrix;\n"
+		"uniform mat4 camera_rotation;\n"
 		"out vec3 ex_normal;\n"
 		"void main() {\n"
-		"	ex_normal = vec3(1.0f, 1.0f, 0.0f);\n"
-		"	gl_Position = gl_in[0].gl_Position;\n"
+		"	//ex_normal = vec3(1.0f, 1.0f, 0.0f);\n"
+		"	ex_normal = cross(normalize(gl_in[1].gl_Position.xyz - gl_in[0].gl_Position.xyz),\n"
+		"					  normalize(gl_in[2].gl_Position.xyz - gl_in[0].gl_Position.xyz));\n"
+		"	gl_Position = projection_matrix * (camera_rotation * gl_in[0].gl_Position);\n"
 		"	EmitVertex();\n"
-		"	ex_normal = vec3(0.0f, 1.0f, 0.0f);\n"
-		"	gl_Position = gl_in[1].gl_Position;\n"
+		"	//ex_normal = vec3(0.0f, 1.0f, 0.0f);\n"
+		"	ex_normal = cross(normalize(gl_in[1].gl_Position.xyz - gl_in[0].gl_Position.xyz),\n"
+		"					  normalize(gl_in[2].gl_Position.xyz - gl_in[0].gl_Position.xyz));\n"
+		"	gl_Position = projection_matrix * (camera_rotation * gl_in[1].gl_Position);\n"
 		"	EmitVertex();\n"
-		"	ex_normal = vec3(0.0f, 1.0f, 1.0f);\n"
-		"	gl_Position = gl_in[2].gl_Position;\n"
+		"	//ex_normal = vec3(0.0f, 1.0f, 1.0f);\n"
+		"	ex_normal = cross(normalize(gl_in[1].gl_Position.xyz - gl_in[0].gl_Position.xyz),\n"
+		"					  normalize(gl_in[2].gl_Position.xyz - gl_in[0].gl_Position.xyz));\n"
+		"	gl_Position = projection_matrix * (camera_rotation * gl_in[2].gl_Position);\n"
 		"	EmitVertex();\n"
 		"	EndPrimitive();\n"
 		"}\n"
@@ -350,6 +365,42 @@ int main() {
 		"out vec4 out_color;\n"
 		"void main() {\n"
 		"	out_color = ex_color;\n"
+		"}\n",
+
+		NULL
+	);
+
+	GLuint grid_shader = shader_from_string(
+		"#version 330\n"
+		"uniform mat4 projection_matrix;\n"
+		"uniform mat4 camera_rotation;\n"
+		"in vec3 in_vertex;\n"
+		//"in vec4 in_color;\n"
+		"out vec4 ex_color;\n"
+		"out vec2 ex_verts;\n"
+		"out vec3 world_pos;\n"
+		"void main() {\n"
+		"	ex_verts = in_vertex.xz*256.0f;\n"
+		"	vec3 v = vec3(ex_verts.x, in_vertex.y, ex_verts.y);\n"
+		"	gl_Position = projection_matrix * (camera_rotation * vec4(v, 1.0f));\n"
+		"	world_pos = (camera_rotation * vec4(v, 1.0f)).xyz;\n"
+		//"	ex_color = in_color;\n"
+		"}\n",
+
+		"#version 330\n"
+		"in vec4 ex_color;\n"
+		"in vec2 ex_verts;\n"
+		"in vec3 world_pos;\n"
+		"out vec4 out_color;\n"
+		"void main() {\n"
+		//"	out_color = vec4(ex_verts, 0.0, 1.0f);\n"
+		"	float dist = length(world_pos);\n"
+		"	if (fract(ex_verts.x / 1f) < (0.01f*dist) || fract(ex_verts.y / 1f) < (0.01f*dist)) {\n"
+		"		out_color = vec4(1.0, 0.0, 0.0, 1.0f);\n"
+		"	} else {\n"
+		"		out_color = vec4(0);\n"
+		"		discard;\n"
+		"	}\n"
 		"}\n",
 
 		NULL
@@ -395,7 +446,7 @@ int main() {
 	geo_indices[geo_index_count++] = geo_vertex_count++;\
 
 	typedef struct {
-		int2 vertices[3];
+		int3 vertices[3];
 	} Shape;
 	Shape shapes[100];
 	int shape_count = 0;
@@ -405,25 +456,26 @@ int main() {
 		shapes[shape_count].vertices[0] = v0; \
 		shapes[shape_count].vertices[1] = v1; \
 		shapes[shape_count].vertices[2] = v2; \
-		int i = v0.y*(GRID_WIDTH+1) + v0.x; \
-		grid[i].shapes[grid[i].shape_count++] = shape_count; \
-		i = v1.y*(GRID_WIDTH+1) + v1.x; \
-		grid[i].shapes[grid[i].shape_count++] = shape_count; \
-		i = v2.y*(GRID_WIDTH+1) + v2.x; \
-		grid[i].shapes[grid[i].shape_count++] = shape_count; \
 		++shape_count; \
 	} else {\
 		debug_print("Ran out of shape space!\n");\
 	}\
 
+	/*int i = v0.y*(GRID_WIDTH+1) + v0.x; \
+	grid[i].shapes[grid[i].shape_count++] = shape_count; \
+	i = v1.y*(GRID_WIDTH+1) + v1.x; \
+	grid[i].shapes[grid[i].shape_count++] = shape_count; \
+	i = v2.y*(GRID_WIDTH+1) + v2.x; \
+	grid[i].shapes[grid[i].shape_count++] = shape_count; \*/
+
 #define GRID_WIDTH 10
 #define GRID_HEIGHT 10
-#define GRID_CELL_SHAPE_MAX 8
-	typedef struct {
-		int shapes[GRID_CELL_SHAPE_MAX];
-		int shape_count;
-	} GridSquare;
-	GridSquare grid[(GRID_WIDTH+1) * (GRID_HEIGHT+1)] = {0};
+//#define GRID_CELL_SHAPE_MAX 8
+//	typedef struct {
+//		int shapes[GRID_CELL_SHAPE_MAX];
+//		int shape_count;
+//	} GridSquare;
+//	GridSquare grid[(GRID_WIDTH+1) * (GRID_HEIGHT+1)] = {0};
 
 	quaternion camera_rotation = quaternion_identity();
 	float3 camera_euler_rotation = {-0.5f};
@@ -504,24 +556,52 @@ int main() {
 		if (rain.mouse.left.released && (closest_grid.x!=drag_start.x || closest_grid.y!=drag_start.y)) {
 			debug_print("drag was done! {%i %i} to {%i %i}\n", drag_start.x, drag_start.y, closest_grid.x, closest_grid.y);
 
-			int i = drag_start.y*(GRID_WIDTH+1) + drag_start.x;
-			for (int j = 0; j < grid[i].shape_count; ++j) {
-				//shapes[grid[i]->shapes[j]]
-				for (int k = 0; k < 3; ++k) {
-					if (shapes[grid[i].shapes[j]].vertices[k].x == drag_start.x &&
-						shapes[grid[i].shapes[j]].vertices[k].y == drag_start.y) {
-						if (grid[closest_grid.y*(GRID_WIDTH+1) + closest_grid.x].shape_count < GRID_CELL_SHAPE_MAX) {
-							shapes[grid[i].shapes[j]].vertices[k].x = closest_grid.x;
-							shapes[grid[i].shapes[j]].vertices[k].y = closest_grid.y;
-							grid[closest_grid.y*(GRID_WIDTH+1) + closest_grid.x].shapes[grid[closest_grid.y*(GRID_WIDTH+1) + closest_grid.x].shape_count++] = grid[i].shapes[j];
-							grid[i].shapes[j] = grid[i].shapes[grid[i].shape_count-1];
-							--grid[i].shape_count;
-							--j; // redo this shape index
-							break;
-						} else {
-							debug_print("max shapes reached for grid cell %i %i\n", closest_grid.x, closest_grid.y);
-						}
+			//int i = drag_start.y*(GRID_WIDTH+1) + drag_start.x;
+			//for (int j = 0; j < grid[i].shape_count; ++j) {
+			//	for (int k = 0; k < 3; ++k) {
+			//		if (shapes[grid[i].shapes[j]].vertices[k].x == drag_start.x &&
+			//			shapes[grid[i].shapes[j]].vertices[k].y == drag_start.y) {
+			//			if (grid[closest_grid.y*(GRID_WIDTH+1) + closest_grid.x].shape_count < GRID_CELL_SHAPE_MAX) {
+			//				shapes[grid[i].shapes[j]].vertices[k].x = closest_grid.x;
+			//				shapes[grid[i].shapes[j]].vertices[k].y = closest_grid.y;
+			//				grid[closest_grid.y*(GRID_WIDTH+1) + closest_grid.x].shapes[grid[closest_grid.y*(GRID_WIDTH+1) + closest_grid.x].shape_count++] = grid[i].shapes[j];
+			//				grid[i].shapes[j] = grid[i].shapes[grid[i].shape_count-1];
+			//				--grid[i].shape_count;
+			//				--j; // redo this shape index
+			//				break;
+			//			} else {
+			//				debug_print("max shapes reached for grid cell %i %i\n", closest_grid.x, closest_grid.y);
+			//			}
+			//		}
+			//	}
+			//}
+
+			for (int i = 0; i < shape_count; ++i) {
+				for (int j = 0; j < 3; ++j) {
+					if (shapes[i].vertices[j].x == drag_start.x && shapes[i].vertices[j].z == drag_start.y) {
+						shapes[i].vertices[j].x = closest_grid.x;
+						shapes[i].vertices[j].z = closest_grid.y;
 					}
+				}
+
+				if (shapes[i].vertices[0].x == shapes[i].vertices[1].x && shapes[i].vertices[0].z == shapes[i].vertices[1].z ||
+					shapes[i].vertices[0].x == shapes[i].vertices[2].x && shapes[i].vertices[0].z == shapes[i].vertices[2].z ||
+					shapes[i].vertices[1].x == shapes[i].vertices[2].x && shapes[i].vertices[1].z == shapes[i].vertices[2].z) {
+					shapes[i] = shapes[shape_count-- -1];
+					debug_print("shape %i was removed\n", i);
+					--i;
+				}
+			}
+		}
+
+		for (int i = 0; i < shape_count; ++i) {
+			for (int j = 0; j < 3; ++j) {
+				if (closest_grid.x == shapes[i].vertices[j].x && closest_grid.y == shapes[i].vertices[j].z) {
+					if (rain.mouse.wheel_delta != 0) {
+						//debug_print("wheel %i\n", rain.mouse.wheel_delta);
+						shapes[i].vertices[j].y += rain.mouse.wheel_delta;
+					}
+					//shapes[i].vertices[j].y += 1;
 				}
 			}
 		}
@@ -565,7 +645,7 @@ int main() {
 			}
 		}
 #endif
-		for (int i = 0; i < shape_count; ++i) {
+		/*for (int i = 0; i < shape_count; ++i) {
 			for (int j = 0; j < 3; ++j) {
 				int2 v = shapes[i].vertices[j];
 				int gi = v.y*(GRID_WIDTH+1) + v.x;
@@ -584,8 +664,6 @@ int main() {
 							}
 						}
 					}
-					/*shapes[i] = shapes[shape_count-1];
-					--shape_count;*/
 					shapes[i].vertices[0].x = 0;
 					shapes[i].vertices[0].y = 0;
 					shapes[i].vertices[1].x = 0;
@@ -595,10 +673,10 @@ int main() {
 					break;
 				}
 			}
-		}
+		}*/
 
 		// check for errors
-		for (int i = 0; i < shape_count; ++i) {
+		/*for (int i = 0; i < shape_count; ++i) {
 			for (int j = 0; j < 3; ++j) {
 				int2 v = shapes[i].vertices[j];
 				bool found = false;
@@ -610,7 +688,7 @@ int main() {
 				}
 				if (!found) debug_print("error, shape not found in grid\n");
 			}
-		}
+		}*/
 
 		/*if (rain.mouse.right.released) {
 			tri_add_buffer[tri_add_count++] = closest_p.xyz;
@@ -692,9 +770,9 @@ int main() {
 						glVertex3f(pos.x+0.5f, pos.y, pos.z);
 						glVertex3f(pos.x+0.5f, pos.y, pos.z+0.5f);
 						glVertex3f(pos.x, pos.y, pos.z+0.5f);*/
-						int2 i0;
-						int2 i1;
-						int2 i2;
+						int3 i0;
+						int3 i1;
+						int3 i2;
 						switch (j) {
 						case 0:
 							/*p0 = make_float3(p.x, p.y, p.z);
@@ -703,9 +781,9 @@ int main() {
 							/*glVertex3f(p.x, p.y, p.z);
 							glVertex3f(p.x+1, p.y, p.z);
 							glVertex3f(p.x, p.y, p.z+1);*/
-							i0 = make_int2(x, y);
-							i1 = make_int2(x+1, y);
-							i2 = make_int2(x, y+1);
+							i0 = make_int3(x, 0, y);
+							i1 = make_int3(x+1, 0, y);
+							i2 = make_int3(x, 0, y+1);
 							break;
 						case 1:
 							/*p0 = make_float3(p.x, p.y, p.z);
@@ -714,9 +792,9 @@ int main() {
 							/*glVertex3f(p.x, p.y, p.z);
 							glVertex3f(p.x+1, p.y, p.z);
 							glVertex3f(p.x+1, p.y, p.z+1);*/
-							i0 = make_int2(x, y);
-							i1 = make_int2(x+1, y);
-							i2 = make_int2(x+1, y+1);
+							i0 = make_int3(x, 0, y);
+							i1 = make_int3(x+1, 0, y);
+							i2 = make_int3(x+1, 0, y+1);
 							break;
 						case 2:
 							/*p0 = make_float3(p.x, p.y, p.z);
@@ -725,9 +803,9 @@ int main() {
 							/*glVertex3f(p.x, p.y, p.z);
 							glVertex3f(p.x+1, p.y, p.z+1);
 							glVertex3f(p.x, p.y, p.z+1);*/
-							i0 = make_int2(x, y);
-							i1 = make_int2(x+1, y+1);
-							i2 = make_int2(x, y+1);
+							i0 = make_int3(x, 0, y);
+							i1 = make_int3(x+1, 0, y+1);
+							i2 = make_int3(x, 0, y+1);
 							break;
 						case 3:
 							/*p0 = make_float3(p.x+1, p.y, p.z);
@@ -736,16 +814,16 @@ int main() {
 							/*glVertex3f(p.x+1, p.y, p.z);
 							glVertex3f(p.x+1, p.y, p.z+1);
 							glVertex3f(p.x, p.y, p.z+1);*/
-							i0 = make_int2(x+1, y);
-							i1 = make_int2(x+1, y+1);
-							i2 = make_int2(x, y+1);
+							i0 = make_int3(x+1, 0, y);
+							i1 = make_int3(x+1, 0, y+1);
+							i2 = make_int3(x, 0, y+1);
 							break;
 						}
 
 						if (rain.mouse.right.down) {
-							glVertex3f(-5.0f + i0.x, 0, -5.0f + i0.y);
-							glVertex3f(-5.0f + i1.x, 0, -5.0f + i1.y);
-							glVertex3f(-5.0f + i2.x, 0, -5.0f + i2.y);
+							glVertex3f(-5.0f + i0.x, 0, -5.0f + i0.z);
+							glVertex3f(-5.0f + i1.x, 0, -5.0f + i1.z);
+							glVertex3f(-5.0f + i2.x, 0, -5.0f + i2.z);
 						}
 						glEnd();
 
@@ -913,18 +991,18 @@ int main() {
 			for (int i = 0; i < shape_count; ++i) {
 				float3 p0 = {
 					-5.0f + shapes[i].vertices[0].x,
-					0.0f,
-					-5.0f + shapes[i].vertices[0].y
+					(float)shapes[i].vertices[0].y/4,
+					-5.0f + shapes[i].vertices[0].z
 				};
 				float3 p1 = {
 					-5.0f + shapes[i].vertices[1].x,
-					0.0f,
-					-5.0f + shapes[i].vertices[1].y
+					(float)shapes[i].vertices[1].y/4,
+					-5.0f + shapes[i].vertices[1].z
 				};
 				float3 p2 = {
 					-5.0f + shapes[i].vertices[2].x,
-					0.0f,
-					-5.0f + shapes[i].vertices[2].y
+					(float)shapes[i].vertices[2].y/4,
+					-5.0f + shapes[i].vertices[2].z
 				};
 				add_geo_triangle(p0, p1, p2);
 			}
@@ -933,17 +1011,17 @@ int main() {
 			int line_count = 0;
 			for (int i = 0; i < geo_vertex_count; i += 3) {
 				lines[line_count] = geo_vertices[i];
-				lines[line_count++].y = 0.01f;
+				lines[line_count++].y += 0.01f;
 				lines[line_count] = geo_vertices[i+1];
-				lines[line_count++].y = 0.01f;
+				lines[line_count++].y += 0.01f;
 				lines[line_count] = geo_vertices[i+1];
-				lines[line_count++].y = 0.01f;
+				lines[line_count++].y += 0.01f;
 				lines[line_count] = geo_vertices[i+2];
-				lines[line_count++].y = 0.01f;
+				lines[line_count++].y += 0.01f;
 				lines[line_count] = geo_vertices[i+2];
-				lines[line_count++].y = 0.01f;
+				lines[line_count++].y += 0.01f;
 				lines[line_count] = geo_vertices[i];
-				lines[line_count++].y = 0.01f;
+				lines[line_count++].y += 0.01f;
 			}
 
 			glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float3), geo_vertices);
@@ -956,6 +1034,18 @@ int main() {
 			glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, lines);
 			glDrawArrays(GL_LINES, 0, line_count);
 			//debug_print("geo_index_count %i\n", (geo_index_count/3)*3);
+
+			/*use_shader(grid_shader);
+			projection_uniform = glGetUniformLocation(geo_shader, "projection_matrix");
+			camera_uniform = glGetUniformLocation(geo_shader, "camera_rotation");
+			glUniformMatrix4fv(projection_uniform, 1, GL_FALSE, proj_mat);
+			glUniformMatrix4fv(camera_uniform, 1, GL_FALSE, &camera_matrix);
+			glBegin(GL_QUADS);
+			glVertex3f(-0.5f, 1.0f, -0.5f);
+			glVertex3f(0.5f, 1.0f, -0.5f);
+			glVertex3f(0.5f, 1.0f, 0.5f);
+			glVertex3f(-0.5f, 1.0f, 0.5f);
+			glEnd();*/
 		}
 #endif
 	}
