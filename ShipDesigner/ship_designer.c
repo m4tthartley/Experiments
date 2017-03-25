@@ -41,6 +41,20 @@ float float2_dist(float2 a, float2 b) {
 	return result;
 }
 
+float length2(float2 v) {
+	float result = sqrtf(v.x*v.x + v.y*v.y);
+	if (isnan(result)) __debugbreak();
+	return result;
+}
+
+float2 sub2(float2 a, float2 b) {
+	float2 result = {
+		a.x - b.x,
+		a.y - b.y,
+	};
+	return result;
+}
+
 #define PI 3.14159265359f
 #define PI2 (3.14159265359f*2.0f)
 void make_perspective_matrix(float *out, float fov, float aspect, float near, float far) {
@@ -93,9 +107,11 @@ mat4 mat4_mul(mat4 m1, mat4 m2) {
 			}
 		}
 	}
+
+	return out;
 }
 
-mat4 mat4_apply_translation(mat4 *m, float3 pos) {
+void mat4_apply_translation(mat4 *m, float3 pos) {
 	mat4 result = {
 		1, 0, 0, 0,
 		0, 1, 0, 0,
@@ -594,6 +610,10 @@ int main() {
 			}
 		}
 
+		use_shader(screen_shader);
+
+		static int hover_shape = -1;
+		static int hover_vert = -1;
 		for (int i = 0; i < shape_count; ++i) {
 			for (int j = 0; j < 3; ++j) {
 				if (closest_grid.x == shapes[i].vertices[j].x && closest_grid.y == shapes[i].vertices[j].z) {
@@ -603,6 +623,51 @@ int main() {
 					}
 					//shapes[i].vertices[j].y += 1;
 				}
+
+				float4 pos = {
+					-5.0f + shapes[i].vertices[j].x,
+					(float)shapes[i].vertices[j].y/4,
+					-5.0f + shapes[i].vertices[j].z,
+					1.0f
+				};
+				float4_apply_mat4(&pos, &camera_matrix);
+				float4_apply_perspective(&pos, proj_mat);
+
+				float4 c = {1.0f, 0.0f, 1.0f, 1.0f};
+
+				if (length2(sub2(pos.xy, mouse)) < 0.015f) {
+					c.r = 0;
+					c.g = 1;
+
+					if (rain.mouse.left.released) {
+						hover_shape = i;
+						hover_vert = j;
+					}
+				}
+
+				if (i==hover_shape && j==hover_vert) {
+					c.r = 0;
+					c.g = 1;
+					c.b = 0;
+				}
+
+				float rot = 0.0f;
+				float3 verts[16][2];
+				float4 colors[16][2];
+				for (int k = 0; k < 16; ++k) {
+					float3 a = {pos.x + -cosf(rot)*(0.015f*((float)rain.window_height/(float)rain.window_width)), pos.y + sinf(rot)*0.015f, 0.0f};
+					verts[k][0] = a;
+					float3 b = {pos.x + -cosf(rot+PI/8.0f)*(0.015f*((float)rain.window_height/(float)rain.window_width)), pos.y + sinf(rot+PI/8.0f)*0.015f, 0.0f};
+					verts[k][1] = b;
+					
+					colors[k][0] = c;
+					colors[k][1] = c;
+					rot += PI/8.0f;
+				}
+
+				glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, verts);
+				glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 0, colors);
+				glDrawArrays(GL_LINES, 0, 32);
 			}
 		}
 
