@@ -1,10 +1,8 @@
 ﻿  ship_designer.c
-w:\miscellaneous\shipdesigner\graphics.c(31): warning C4005: 'GL_EXTENSIONS': macro redefinition
+w:\libs\gfx.c(39): warning C4005: 'GL_EXTENSIONS': macro redefinition
   c:\program files (x86)\windows kits\8.1\include\um\gl\gl.h(897): note: see previous definition of 'GL_EXTENSIONS'
-w:\miscellaneous\shipdesigner\ship_designer.c(271): warning C4026: function declared with formal parameter list
-w:\miscellaneous\shipdesigner\ship_designer.c(437): warning C4101: 'tri_add_buffer': unreferenced local variable
-w:\miscellaneous\shipdesigner\ship_designer.c(480): warning C4101: 'camera_rotation': unreferenced local variable
-w:\miscellaneous\shipdesigner\ship_designer.c(106): warning C4716: 'mat4_apply_translation': must return a value
-w:\miscellaneous\shipdesigner\ship_designer.c(96): warning C4716: 'mat4_mul': must return a value
+w:\miscellaneous\shipdesigner\ship_designer.c(13): warning C4026: function declared with formal parameter list
+w:\miscellaneous\shipdesigner\ship_designer.c(179): warning C4101: 'tri_add_buffer': unreferenced local variable
+w:\miscellaneous\shipdesigner\ship_designer.c(222): warning C4101: 'camera_rotation': unreferenced local variable
   ShipDesigner.vcxproj -> W:\Miscellaneous\ShipDesigner\x64\Debug\ShipDesigner.exe
   ShipDesigner.vcxproj -> W:\Miscellaneous\ShipDesigner\x64\Debug\ShipDesigner.pdb (Partial PDB)
