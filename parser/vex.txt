@@ -1,0 +1,230 @@
+Vex is a minimalistic markup language with the motto "form without meaning".
+
+This is going to @italic=really hurt.
+
+// @author: Per Vognsen
+// @version: 1.3
+
+The weather forecast for @date is @weather.
+
+@list{
+  @item: Chocolate Milk
+  @item: Cottage Cheese
+}
+
+@chapter: There and Back Again
+
+// @deprecated: This is way out of date. You should be using @=player2.
+struct player {
+  // @range(min=0 max=100)
+  int health;
+};
+
+The sigil for nodes is @.
+
+Sigils for root nodes may have a special prefix to enable embedding in foreign file formats.
+
+For example, with a root sigil of '// @' we may embed Vex markup in line comments of C source code.
+Then the C compiler and the generic Vex parser are able to digest the same C file and extract what they need.
+
+The primitive syntactic form is @tag{...}. The others are merely shorthands for common use cases:
+
+    @tag is equivalent to @tag{}
+
+    @tag=stuff is equivalent to @tag{stuff}
+
+    @tag: Stuff until the next line ending
+    is equivalent to @tag{ Stuff until the next line ending}
+
+    @tag(aaa=bbb ccc=ddd) is equivalent to @tag{@aaa=bbb @ccc=ddd}
+
+The grammar for Vex is simple. A full parser in C is 50 lines.
+
+The two data types are spans and nodes.
+
+A span is an interval of text. It's best to think of this as pointing into the original document. This is
+reflected in the implementation (a span is a pair of offsets) but it also reflects a philosophical point
+that the purpose of a markup language is to mark up an existing text, not to normalize or otherwise alter it.
+A program can process the Vex markup in concert with the text to analyze or transform it, but that's expressly
+not the job of the markup parser.
+
+A node has a dual nature as a textual and structural element. Textually, it is composed of three spans:
+
+    @foo{bar baz}
+    ^           ^      span
+     ^ ^               tag
+         ^     ^       body
+
+Structurally, it is composed of an ordered list of child nodes. For example,
+
+    @tag{aaa @bbb ccc @ddd}
+    
+has child nodes @bbb and @ddd.
+
+Note that the interstitial text in the body is not represented explicitly in the structure. But it is implicit
+by subtracting the child node spans from the parent's body, yielding a list of interstitial spans. This allows
+for easy pre-order traversal.
+
+The dual nature of nodes means that a postprocessor can ignore all the internal structure if it's not relevant
+to the semantics (e.g. a @verbatim tag) without the Vex parser having to know about those semantics. The important
+thing is that the nesting and delimiters are balanced. To support that for a variety of content, the @tag{ syntax
+counts braces, so that the following works:
+
+  @code{
+    int main() {
+      return 0;
+    }
+  }
+  
+A word (the lexical entity follows @ and =) can be empty. A Vex-based language can use this as a default tag:
+
+  Grouping subexpressions: @{1 + @{2 * 3}}
+  Cross-references/hyperlinks: See @=intro if you want an introduction.
+  Tagging verbatim text: Email @{per.vognsen@gmail.com} for further information.
+
+For escaping, Vex's philosophy is that you should escape the markup, not the content. This is exactly the opposite
+of SGML and XML's philosophy. Thus, if you want to use unbalanced curly braces in a @tag{} block, you escape the tag:
+
+  @code{{
+    char c = '}';
+  }}
+  
+  @code{{{
+    char *str = "}}";
+  }}}
+  
+The dual nature of nodes also eases the traditional burdens of escaping. For example, if you wanted to write a
+tutorial on Vex in a Vex-based documentation preparation language, you could simply write:
+
+  In Vex, we write nodes by starting with a sigil:
+  
+  @example{
+    @item{Chocolate Milk}
+  }
+
+The Vex parser would parse @item{Chocolate Milk} like any other node, but the document preparation system could
+choose to treat @example nodes as raw textual nodes and only look at their spans, not their child nodes.
+
+Other escaped forms that just work:
+
+  @tag{ as @tag{}{
+  @tag= as @tag{}=
+  @tag: as @tag{}:
+
+Appendix 1: Representing SGML/XML/HTML with Vex
+
+If you wanted to represent the SGML family via Vex, a good use for empty tags would be to specify attributes.
+If the first child node has an empty tag, its children nodes are interpreted as attribute key-value pairs:
+
+
+  @html{
+    @head{
+      @title{Hello, world!}
+    }
+    @body{
+      @p{
+        @div{@{@id{foo} @class{bar}}
+          Would you like an orange @img{@{@src{orange.jpg}}}?
+        }
+      }
+    }
+  }
+
+With all the shorthands, it would look like this:
+
+  @html{
+    @head: @title: Hello, world!
+    @body{
+      @p{
+        @div: @(id=foo class=bar) Would you like an orange @img{@(src{orange.jpg})}?
+      }
+    }
+  }
+  
+An alternative representation of HTML would be to represent attributes as any other kind of child nodes:
+
+@html{
+    @head: @title: Hello, world!
+    @body{
+      @p{
+        @div: @id=foo @class=bar Would you like an orange @img{@src{orange.jpg}}?
+      }
+    }
+  }
+
+This is how the SGML family should have done it in the first place (see Erik Naggum's numerous rants on attributes).
+The downside is that the Vex-to-HTML converter now needs a list of which child node tags of a given node tag signify
+attributes, whereas the first proposal doesn't need any knowledge of specific HTML tags and attributes at all.
+
+Appendix 2: Using Vex as a templating language
+
+When using Vex as a templating language, we want to generate strings or other types of data from Vex nodes and splice
+these into the program. We also want to splice in program subexpressions, a convenient use of empty tags:
+
+  for item in items:
+    print @{Click @a{@href{@{item.url}}here} to see the item.}
+
+is translated into
+
+  for item in items:
+    print "Click <a href=\"" + (item.url) + "\">here</a> to see the item."
+
+The most natural way to translate empty tags is recursive, which allows for nested quoting/unquoting:
+
+  print @{The results were @{', '.join(@{@=name with time @=time} for name, time in results)}.}
+
+Thus, it can be used for lightweight string interpolation, not just as a full templating language.
+
+These templates have code as the top level, but you could equally well have text at the top level. Recursive quoting
+and unquoting makes those cases perfectly symmetric; they're only different in their code vs text starting state:
+
+  The time today is @{time.now()} and it's currently @=weather.
+
+In a language like C that doesn't like manipulating strings as expressions, the meaning of a node could be imperative:
+
+  for (int i = 0; i < num_items; i++) {
+    @{Click @a{@href{@{url(items[i].url)}here} to see the item.}
+  }
+
+would translate into
+
+  for (int i = 0; i < num_items; i++) {
+    text("Click <a href=\""); url(items[i].url); text("\">here</a> to see the item");
+  }
+
+Here, text() could append to a buffer or print directly to stdout.
+
+Appendix 3: Lists and Lisps
+
+Let's say you want to make lists of things. Earlier, I had this example:
+
+  @items{
+    @item: Chocolate Milk
+    @item: Cottage Cheese
+  }
+
+The redundancy of repeating the word 'item' in both @items and @item is a little telling. It's convenient to use
+empty tags to specify items:
+
+  @items{
+    @: Chocolate Milk
+    @: Cottage Cheese
+  }
+
+  @items: @{Chocolate Milk} @{Cottage Cheese}
+
+  @items{@=chocolatemilk @=cottagecheese}
+
+An extreme version of this idea would be to use nothing but empty tags in the language, akin to S-expressions:
+
+  @(define (fact n)
+    (if (eq n 0)
+      1
+      (* n (fact (1- n)))))
+
+Because of the @tag( shorthand for sigil-free bodies, this parses equivalent to this;
+
+  @{@{define} @{@{fact} @{n}}
+    @{@{if} @{@{eq} @{n}}
+      @{1}
+      @{@{*} @{n} @{@{fact} @{@{1-} @{n}}}}}}

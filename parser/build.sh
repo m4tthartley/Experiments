@@ -1,3 +1,3 @@
 
-gcc main.c -o parser
+gcc -g main.c -o parser
 ./parser

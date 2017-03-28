@@ -39,15 +39,23 @@
 			"file": "main.c",
 			"settings":
 			{
-				"buffer_size": 62,
+				"buffer_size": 12035,
 				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "out.txt",
+			"settings":
+			{
+				"buffer_size": 14208,
+				"line_ending": "Windows"
 			}
 		},
 		{
 			"file": "build.sh",
 			"settings":
 			{
-				"buffer_size": 34,
+				"buffer_size": 61,
 				"line_ending": "Unix"
 			}
 		}
@@ -294,15 +302,15 @@
 					"semi_transient": false,
 					"settings":
 					{
-						"buffer_size": 62,
+						"buffer_size": 12035,
 						"regions":
 						{
 						},
 						"selection":
 						[
 							[
-								60,
-								60
+								3227,
+								3227
 							]
 						],
 						"settings":
@@ -310,7 +318,7 @@
 							"syntax": "Packages/C++/C++.tmLanguage"
 						},
 						"translation.x": 0.0,
-						"translation.y": 0.0,
+						"translation.y": 1948.0,
 						"zoom_level": 1.0
 					},
 					"stack_index": 0,
@@ -318,19 +326,47 @@
 				},
 				{
 					"buffer": 1,
-					"file": "build.sh",
+					"file": "out.txt",
 					"semi_transient": false,
 					"settings":
 					{
-						"buffer_size": 34,
+						"buffer_size": 14208,
 						"regions":
 						{
 						},
 						"selection":
 						[
 							[
-								8,
-								8
+								368,
+								368
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Text/Plain text.tmLanguage"
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 1,
+					"type": "text"
+				},
+				{
+					"buffer": 2,
+					"file": "build.sh",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 61,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								61,
+								61
 							]
 						],
 						"settings":
@@ -341,7 +377,7 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 1,
+					"stack_index": 2,
 					"type": "text"
 				}
 			]
@@ -380,7 +416,7 @@
 	"menu_visible": true,
 	"output.exec":
 	{
-		"height": 154.0
+		"height": 193.0
 	},
 	"output.find_results":
 	{

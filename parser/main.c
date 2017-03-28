@@ -4,6 +4,8 @@
 #include <string.h>
 #include <stdbool.h>
 
+#define assert(expr) if (!expr) *((volatile int*)0) = 0;
+
 enum {
 	TOKEN_UNKNOWN,
 	TOKEN_TEXT,
@@ -524,13 +526,13 @@ void add_token(HighToken *out, int out_limit, int *token_count, int type, char *
 void inner_parse(HighToken *out, int out_limit, int *token_count, int end_type) {
 	while (1) {
 		if (t.type == TOKEN_EOF) break;
-		if (end_type == TOKEN_CLOSE_CURLY_BRACE) {
-			printf("END TYPE CURLY %i %i %s\n", TOKEN_CLOSE_CURLY_BRACE, t.type, t.str);
-			if (t.type == TOKEN_CLOSE_CURLY_BRACE) {
-				printf("GOT CURLY\n");
-				break;
-			}
-		}
+		// if (end_type == TOKEN_CLOSE_CURLY_BRACE) {
+		// 	printf("END TYPE CURLY %i %i %s\n", TOKEN_CLOSE_CURLY_BRACE, t.type, t.str);
+		// 	if (t.type == TOKEN_CLOSE_CURLY_BRACE) {
+		// 		printf("GOT CURLY\n");
+		// 		break;
+		// 	}
+		// }
 		
 
 		while (/*t.type != TOKEN_NODE*/ (t.type == TOKEN_TEXT || t.type == TOKEN_SPACE) && t.type != TOKEN_EOF) {
@@ -546,6 +548,8 @@ void inner_parse(HighToken *out, int out_limit, int *token_count, int end_type) 
 		// need to have saved the beginning of the string and set the end to 0
 		// should return the ptr in token so it can set to 0
 
+		if (t.type == TOKEN_EOF) break;
+
 		if (t.type == TOKEN_NODE) {
 			char node_name[32];
 			strcpy(node_name, t.str+1);
@@ -554,12 +558,12 @@ void inner_parse(HighToken *out, int out_limit, int *token_count, int end_type) 
 			if (t.type == TOKEN_COLON) {
 				// printf("_");
 				t = get_token();
-				while (t.type != TOKEN_NEWLINE && t.type != TOKEN_EOF) {
-					// printf("%s", t.str);
-					add_token(out, out_limit, token_count, TEXT, t.str);
-					t = get_token();
-				}
+				// while (t.type != TOKEN_NEWLINE && t.type != TOKEN_EOF) {
+				// 	add_token(out, out_limit, token_count, TEXT, t.str);
+				// 	t = get_token();
+				// }
 				// printf("_");
+				inner_parse(out, out_limit, token_count, TOKEN_NEWLINE);
 				add_token(out, out_limit, token_count, NODE_END, node_name);
 			}
 			if (t.type == TOKEN_EQUALS) {
@@ -592,7 +596,7 @@ void inner_parse(HighToken *out, int out_limit, int *token_count, int end_type) 
 				// printf("_");
 			}
 		} else if (t.type == TOKEN_CLOSE_CURLY_BRACE) {
-			if (end_type == TOKEN_CLOSE_CURLY_BRACE) {
+			if (end_type == TOKEN_CLOSE_CURLY_BRACE || end_type == TOKEN_NEWLINE) {
 				printf("END TYPE CURLY %i %i %s\n", TOKEN_CLOSE_CURLY_BRACE, t.type, t.str);
 				// if (t.type == TOKEN_CLOSE_CURLY_BRACE) {
 					printf("GOT CURLY\n");
@@ -602,7 +606,10 @@ void inner_parse(HighToken *out, int out_limit, int *token_count, int end_type) 
 				add_token(out, out_limit, token_count, TEXT, t.str);
 				t = get_token();
 			}
+		} else if (t.type == TOKEN_NEWLINE && end_type == TOKEN_NEWLINE) {
+			break;
 		} else {
+			if (!t.str) assert(false);
 			add_token(out, out_limit, token_count, TEXT, t.str);
 			t = get_token();
 		}
