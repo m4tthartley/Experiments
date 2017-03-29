@@ -1,30 +1,57 @@
 
+<p>This parser is <b><i>getting pretty</i></b> cool!</p>
+
 <h1> Parsing test</h1>
 
-This <i>will</i> be awesome
+<p>This <i>will</i> be awesome</p>
 
-This is a {normal} paragraph.
+<p>This is a {normal} paragraph.</p>
 
-Have you figured out <i> how awesome this will be?</i>
+<p>Have you figured out <i> how awesome this will be?</i></p>
 
-How about <i>this stuff</i>!
+<p>How about <i>this stuff</i>!</p>
 
-This <i><b>will be bold italic</b></i>.
+<p>This <i><b>will be bold italic</b></i>.</p>
+
+<p> <b> This whole sentence should be bold!</b></p>
+
+<img  src="http://urlstuff.com">
+
+<img  src= "http://urlstuff.com">
+
+<img  src="http://urlstuff.com" width="800" height="600">
+
+<img  src="test.jpg" width="800" height="600">
 
 <pre>
+	typedef struct {
+		float x;
+		float y;
+		float z;
+	} float3;
+
+	float3 mul3(float3 a, float3 b) {
+		float3 result = {
+			a.x*b.x,
+			a.y*b.y,
+			a.z*b.z,
+		};
+		return result;
+	}
+
 	int main() {
 		printf("Hello World");
-	</pre>
-}
+	}
+</pre>
 
-This parser is <b>@italic{getting</b> pretty} cool!
+<p>This parser is <b><i>getting pretty</i></b> cool!</p>
 
-I like <i>big butts and I <b>cannot lie!</b></i>
+<p>I like <i>big butts and I <b>cannot lie!</b></i></p>
 
-I like <i>big butts and I <b>cannot</b> lie!</i>
+<p>I like <i>big butts and I <b>cannot</b> lie!</i></p>
 
 
 
-sdjnfkajw rkiaje fvikejf <i><b>vjkenfvejknkvj</b></i>
+<p>sdjnfkajw rkiaje fvikejf <i><b>vjkenfvejknkvj</b></i></p>
 
 <iframe src=" https://www.youtube.com/embed/AOxUSjXLv0Y"></iframe>

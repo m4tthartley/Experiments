@@ -32,6 +32,8 @@ void revert_token () {
 	parse_ptr = last_parse_ptr;
 }
 
+int brace_level = 0;
+
 Token get_token() {
 	Token tkn = {0};
 	last_parse_ptr = parse_ptr;
@@ -88,12 +90,14 @@ Token get_token() {
 			buffer[1] = 0;
 			tkn.type = TOKEN_OPEN_CURLY_BRACE;
 			tkn.str = buffer;
+			++brace_level;
 			return tkn;
 		} else if (*parse_ptr == '}') {
 			buffer[0] = *parse_ptr++;
 			buffer[1] = 0;
 			tkn.type = TOKEN_CLOSE_CURLY_BRACE;
 			tkn.str = buffer;
+			--brace_level;
 			return tkn;
 		} else {
 			buffer[0] = *parse_ptr++;
@@ -523,7 +527,137 @@ void add_token(HighToken *out, int out_limit, int *token_count, int type, char *
 	}
 	++*token_count;
 }
+
+void parse_colon_statement(HighToken *out, int out_limit, int *token_count, char *node_name);
+void parse_equals_statement(HighToken *out, int out_limit, int *token_count, char *node_name);
+void parse_brace_statement(HighToken *out, int out_limit, int *token_count, char *node_name);
+
+void parse_inner_statement(HighToken *out, int out_limit, int *token_count) {
+	char node_name[32];
+	strcpy(node_name, t.str+1);
+	t = get_token();
+	if (t.type == TOKEN_COLON) {
+		parse_colon_statement(out, out_limit, token_count, node_name);
+	}
+	if (t.type == TOKEN_EQUALS) {
+		parse_equals_statement(out, out_limit, token_count, node_name);
+	}
+	if (t.type == TOKEN_OPEN_CURLY_BRACE) {
+		parse_brace_statement(out, out_limit, token_count, node_name);
+	}
+}
+
+void parse_colon_statement(HighToken *out, int out_limit, int *token_count, char *node_name) {
+	add_token(out, out_limit, token_count, NODE_START, node_name);
+	t = get_token();
+	int start_brace_level = brace_level;
+	for (;;) {
+		while ((t.type == TOKEN_TEXT || t.type == TOKEN_SPACE) && t.type != TOKEN_EOF) {
+			add_token(out, out_limit, token_count, TEXT, t.str);
+			t = get_token();
+		}
+		if (t.type == TOKEN_EOF) break;
+
+		if (t.type == TOKEN_NODE) {
+			parse_inner_statement(out, out_limit, token_count);
+		} else if (t.type == TOKEN_NEWLINE) {
+			break;
+		} else if (t.type == TOKEN_CLOSE_CURLY_BRACE && brace_level < start_brace_level) {
+			// t = get_token();
+			break;
+		} else {
+			if (!t.str) assert(false);
+			add_token(out, out_limit, token_count, TEXT, t.str);
+			t = get_token();
+		}
+	}
+
+	add_token(out, out_limit, token_count, NODE_END, node_name);
+}
+
+void parse_equals_statement(HighToken *out, int out_limit, int *token_count, char *node_name) {
+	add_token(out, out_limit, token_count, NODE_START, node_name);
+	t = get_token();
+
+	// for (;;) {
+		while (t.type == TOKEN_SPACE) t = get_token();
+		while ((t.type == TOKEN_TEXT) && t.type != TOKEN_EOF) {
+			add_token(out, out_limit, token_count, TEXT, t.str);
+			t = get_token();
+			goto done;
+		}
+		// if (t.type == TOKEN_EOF) break;
+
+		if (t.type == TOKEN_NODE) {
+			parse_inner_statement(out, out_limit, token_count);
+		} /*else if (t.type == TOKEN_NEWLINE) {
+			break;
+		}*/ else {
+			if (!t.str) assert(false);
+			add_token(out, out_limit, token_count, TEXT, t.str);
+			t = get_token();
+		}
+	// }
+
+done:
+	add_token(out, out_limit, token_count, NODE_END, node_name);
+}
+
+void parse_brace_statement(HighToken *out, int out_limit, int *token_count, char *node_name) {
+	add_token(out, out_limit, token_count, NODE_START, node_name);
+	t = get_token();
+	int start_brace_level = brace_level;
+	for (;;) {
+		while ((t.type == TOKEN_TEXT || t.type == TOKEN_SPACE) && t.type != TOKEN_EOF) {
+			add_token(out, out_limit, token_count, TEXT, t.str);
+			t = get_token();
+		}
+		if (t.type == TOKEN_EOF) break;
+
+		if (t.type == TOKEN_NODE) {
+			parse_inner_statement(out, out_limit, token_count);
+		} else if (t.type == TOKEN_CLOSE_CURLY_BRACE && brace_level < start_brace_level) {
+			t = get_token();
+			break;
+		} else {
+			if (!t.str) assert(false);
+			add_token(out, out_limit, token_count, TEXT, t.str);
+			t = get_token();
+		}
+	}
+
+	add_token(out, out_limit, token_count, NODE_END, node_name);
+}
+
 void inner_parse(HighToken *out, int out_limit, int *token_count, int end_type) {
+	for (;;) {
+		while ((t.type == TOKEN_TEXT || t.type == TOKEN_SPACE) && t.type != TOKEN_EOF) {
+			add_token(out, out_limit, token_count, TEXT, t.str);
+			t = get_token();
+		}
+		if (t.type == TOKEN_EOF) break;
+
+		if (t.type == TOKEN_NODE) {
+			char node_name[32];
+			strcpy(node_name, t.str+1);
+			t = get_token();
+			if (t.type == TOKEN_COLON) {
+				parse_colon_statement(out, out_limit, token_count, node_name);
+			}
+			if (t.type == TOKEN_EQUALS) {
+				parse_equals_statement(out, out_limit, token_count, node_name);
+			}
+			if (t.type == TOKEN_OPEN_CURLY_BRACE) {
+				parse_brace_statement(out, out_limit, token_count, node_name);
+			}
+		} else {
+			if (!t.str) assert(false);
+			add_token(out, out_limit, token_count, TEXT, t.str);
+			t = get_token();
+		}
+	}
+
+#if 0
 	while (1) {
 		if (t.type == TOKEN_EOF) break;
 		// if (end_type == TOKEN_CLOSE_CURLY_BRACE) {
@@ -615,6 +749,7 @@ void inner_parse(HighToken *out, int out_limit, int *token_count, int end_type) 
 		}
 		// printf("%i %s\n", t.type, t.str);
 	}
+#endif
 }
 int parse_string(char *input, HighToken *out, int out_limit) {
 	parse_ptr = input;
@@ -643,6 +778,13 @@ char *nodes[][3] = {
 	{"bold", "<b>", "</b>"},
 	{"code", "<pre>", "</pre>"},
 	{"video", "<iframe src=\"", "\"></iframe>"},
+	{"text", "<p>", "</p>"},
+	{"image", "<img ", ">"},
+	{"src", "src=\"", "\""},
+	{"width", "width=\"", "\""},
+	{"height", "height=\"", "\""},
+	{"name", "", "="},
+	{"value", "\"", "\""},
 };
 int node_output(char *str) {
 	for (int i = 0; i < (sizeof(nodes)/sizeof(char*)/3); ++i) {
@@ -658,22 +800,46 @@ void third_test() {
 	int count = parse_string(file_str, tokens, 1024);
 	printf("%i tokens\n", count);
 	{
+		bool in_para = false;
+		bool last_was_new_line = false;
+		int node_level = 0;
 		for (int i = 0; i < count; ++i) {
 			if (tokens[i].type == NODE_START) {
 				int index = node_output(tokens[i].str);
 				if (index != -1) {
 					fprintf(fileout, "%s", nodes[index][1]);
 				}
+				++node_level;
+				// fprintf(fileout, "[%i]", node_level);
 			}
 			if (tokens[i].type == NODE_END) {
 				int index = node_output(tokens[i].str);
 				if (index != -1) {
 					fprintf(fileout, "%s", nodes[index][2]);
+				} else {
+					fprintf(fileout, "UNKNOWN NODE[%s]", tokens[i].str);
 				}
+				--node_level;
+				// fprintf(fileout, "[%i]", node_level);
 			}
 			if (tokens[i].type == TEXT) {
+				if (last_was_new_line && tokens[i].str[0] != '\n' && node_level == 0) {
+					fprintf(fileout, "<p>");
+					in_para = true;
+				}
+
+				if (tokens[i].str[0] == '\n') {
+					if (in_para && node_level == 0) {
+						fprintf(fileout, "</p>");
+						in_para = false;
+					}
+					last_was_new_line = true;
+					// fprintf(fileout, "\\n %i", node_level);
+				} else {
+					last_was_new_line = false;
+				}
 				fprintf(fileout, "%s", tokens[i].str);
-			}
+			} else last_was_new_line = false;
 		}
 	}
 	fclose(fileout);

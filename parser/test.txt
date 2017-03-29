@@ -1,4 +1,6 @@
 
+This parser is @bold=@italic{getting pretty} cool!
+
 @header: Parsing test
 
 This @italic=will be awesome
@@ -11,7 +13,32 @@ How about @italic{this stuff}!
 
 This @italic{@bold{will be bold italic}}.
 
+ @bold: This whole sentence should be bold!
+
+@image: @src{http://urlstuff.com}
+
+@image: @name=src @value{http://urlstuff.com}
+
+@image: @name{src}@value{http://urlstuff.com} @name{width}@value{800} @name{height}@value{600}
+
+@image: @src{test.jpg} @width{800} @height{600}
+
 @code{
+	typedef struct {
+		float x;
+		float y;
+		float z;
+	} float3;
+
+	float3 mul3(float3 a, float3 b) {
+		float3 result = {
+			a.x*b.x,
+			a.y*b.y,
+			a.z*b.z,
+		};
+		return result;
+	}
+
 	int main() {
 		printf("Hello World");
 	}
