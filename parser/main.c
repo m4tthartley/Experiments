@@ -117,6 +117,17 @@ Token get_token() {
 	}
 }
 
+Token eat_whitespace() {
+	Token t = get_token();
+	while (t.type == TOKEN_NEWLINE ||
+		   t.str[0] == '\r' ||
+		   t.str[0] == '\t' ||
+		   t.str[0] == ' ') {
+		t = get_token();
+	}
+	return t;
+}
+
 typedef struct {
 	char node[32];
 	void *parent;
@@ -535,15 +546,17 @@ void parse_brace_statement(HighToken *out, int out_limit, int *token_count, char
 void parse_inner_statement(HighToken *out, int out_limit, int *token_count) {
 	char node_name[32];
 	strcpy(node_name, t.str+1);
-	t = get_token();
+	char *p = parse_ptr;
+	t = eat_whitespace();
 	if (t.type == TOKEN_COLON) {
 		parse_colon_statement(out, out_limit, token_count, node_name);
-	}
-	if (t.type == TOKEN_EQUALS) {
+	} else if (t.type == TOKEN_EQUALS) {
 		parse_equals_statement(out, out_limit, token_count, node_name);
-	}
-	if (t.type == TOKEN_OPEN_CURLY_BRACE) {
+	} else if (t.type == TOKEN_OPEN_CURLY_BRACE) {
 		parse_brace_statement(out, out_limit, token_count, node_name);
+	} else {
+		parse_ptr = p;
+		t = get_token();
 	}
 }
 
@@ -638,18 +651,7 @@ void inner_parse(HighToken *out, int out_limit, int *token_count, int end_type) 
 		if (t.type == TOKEN_EOF) break;
 
 		if (t.type == TOKEN_NODE) {
-			char node_name[32];
-			strcpy(node_name, t.str+1);
-			t = get_token();
-			if (t.type == TOKEN_COLON) {
-				parse_colon_statement(out, out_limit, token_count, node_name);
-			}
-			if (t.type == TOKEN_EQUALS) {
-				parse_equals_statement(out, out_limit, token_count, node_name);
-			}
-			if (t.type == TOKEN_OPEN_CURLY_BRACE) {
-				parse_brace_statement(out, out_limit, token_count, node_name);
-			}
+			parse_inner_statement(out, out_limit, token_count);
 		} else {
 			if (!t.str) assert(false);
 			add_token(out, out_limit, token_count, TEXT, t.str);
@@ -785,6 +787,8 @@ char *nodes[][3] = {
 	{"height", "height=\"", "\""},
 	{"name", "", "="},
 	{"value", "\"", "\""},
+	{"list", "<ul>", "</ul>"},
+	{"item", "<li>", "</li>"},
 };
 int node_output(char *str) {
 	for (int i = 0; i < (sizeof(nodes)/sizeof(char*)/3); ++i) {
@@ -794,8 +798,7 @@ int node_output(char *str) {
 	}
 	return -1;
 }
-void third_test() {
-	FILE *fileout = fopen("test.html", "w");
+void third_test(FILE *fileout) {
 	HighToken tokens[1024];
 	int count = parse_string(file_str, tokens, 1024);
 	printf("%i tokens\n", count);
@@ -808,6 +811,8 @@ void third_test() {
 				int index = node_output(tokens[i].str);
 				if (index != -1) {
 					fprintf(fileout, "%s", nodes[index][1]);
+				} else {
+					fprintf(fileout, "<%s>", tokens[i].str);
 				}
 				++node_level;
 				// fprintf(fileout, "[%i]", node_level);
@@ -817,7 +822,7 @@ void third_test() {
 				if (index != -1) {
 					fprintf(fileout, "%s", nodes[index][2]);
 				} else {
-					fprintf(fileout, "UNKNOWN NODE[%s]", tokens[i].str);
+					fprintf(fileout, "</%s>", tokens[i].str);
 				}
 				--node_level;
 				// fprintf(fileout, "[%i]", node_level);
@@ -845,25 +850,38 @@ void third_test() {
 	fclose(fileout);
 }
 
-int main() {
-	printf("test\n");
+int main(int argc, char **argv) {
+	char *in_file;
+	char *out_file;
+	if (argc > 1) {
+		in_file = argv[1];
+		printf("using input file %s\n", in_file);
+		if (argc > 2) {
+			out_file = argv[2];
+			printf("using output file %s\n", out_file);
+		} else {
+			out_file = "out.html";
+			printf("no output file specified, using default out.html\n");
+		}
 
-	FILE *f = fopen("test.txt", "rb");
-	fseek(f, 0, SEEK_END);
-	int size = ftell(f);
-	fseek(f, 0, SEEK_SET);
+		FILE *f = fopen(in_file, "rb");
+		if (f) {
+			fseek(f, 0, SEEK_END);
+			int size = ftell(f);
+			fseek(f, 0, SEEK_SET);
 
-	file_str = malloc(size+1);
-	fread(file_str, 1, size, f);
-	file_str[size] = 0;
-	fclose(f);
+			file_str = malloc(size+1);
+			fread(file_str, 1, size, f);
+			file_str[size] = 0;
+			fclose(f);
 
-	printf("size %i\n", size);
-	// printf("%s\n", str);
-
-
-	// first_test();
-
-	// second_test();
-	third_test();
+			printf("size %i\n", size);
+			FILE *fileout = fopen(out_file, "w");
+			third_test(fileout);
+		} else {
+			printf("couldn't find input file %s\n", in_file);
+		}
+	} else {
+		printf("no input file specified\n");
+	}
 }

@@ -1,0 +1,23 @@
+
+This is going to @italic=really hurt.
+
+The weather forecast for @date is @weather.
+
+@list{
+	@item: Chocolate Milk
+	@item: Cottage Cheese
+}
+
+@chapter: There and Back Again
+
+
+
+@code{
+	int main() {
+		return 0;
+	}
+}
+
+@code{{
+	char c = '}';
+}}

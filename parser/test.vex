@@ -55,3 +55,15 @@ I like @italic{big butts and I @bold=cannot lie!}
 sdjnfkajw rkiaje fvikejf @italic:@bold:vjkenfvejknkvj
 
 @video: https://www.youtube.com/embed/AOxUSjXLv0Y
+
+@h1: Hello
+@h2: World
+
+@list
+{
+	@item: 		stuff
+	@item: 		other stuff
+}
+
+@list { @item{stuff}
+		@item{other stuff} }

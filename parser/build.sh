@@ -1,3 +1,3 @@
 
 gcc -g main.c -o parser
-./parser
+./parser example.vex example.html
